@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytype/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+
+# Environments
+.venv/
+venv/
+env/
+.python-version
+
+# OS / Editors
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Build outputs
+build/
+dist/
+
+# Node (if any frontend tooling is added later)
+node_modules/
+
+# App secrets and local config
+.env
+.env.*
