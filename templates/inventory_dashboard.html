@@ -92,11 +92,24 @@
                         <span>AI Assistant</span>
                         <span class="hidden md:inline text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">AI</span>
                     </button>
+                    <!-- Memory Tab Button -->
+                    <button @click="openMemoryTab()"
+                            :class="activeTab === 'memory' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                            class="py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center space-x-2">
+                        <span>Memory</span>
+                        <span class="hidden md:inline text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Ctx</span>
+                    </button>
+                    <!-- New Evaluation Tab Button -->
+                    <button @click="activeTab = 'evaluation'" 
+                            :class="activeTab === 'evaluation' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                            class="py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center space-x-2">
+                        <span>Evaluation</span>
+                        <span class="hidden md:inline text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Judge</span>
+                    </button>
                 </div>
             </div>
         </nav>
 
-        <!-- Main Content -->
         <main class="container mx-auto px-6 py-8">
             <!-- Store Overview Tab -->
             <div x-show="activeTab === 'overview'" class="space-y-6">
@@ -378,8 +391,7 @@
                         <h3 class="text-lg font-semibold text-gray-900">Common Inventory Queries</h3>
                         <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Source: AI</span>
                     </div>
-                    <p class="text-gray-600 mb-6">Click on sample queries to get AI-powered recommendations:</p>
-                    
+                    <p class="text-gray-600 mb-6">Click on sample queries to get AI-powered recommendations or a structured AI Plan:</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <button @click="executeMonsoonQuery()" 
                                 class="p-6 border-2 border-blue-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left">
@@ -393,6 +405,13 @@
                             <h4 class="font-medium text-gray-900 mb-2">🪔 Festive Distribution Query</h4>
                             <p class="text-sm text-gray-600">"Optimize festive wear distribution for Diwali"</p>
                             <p class="text-xs text-yellow-600 mt-2">Multi-store seasonal optimization</p>
+                        </button>
+
+                        <button @click="executeAIPlan()" 
+                                class="p-6 border-2 border-purple-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-left">
+                            <h4 class="font-medium text-gray-900 mb-2">🧠 AI Plan (JSON → Validated)</h4>
+                            <p class="text-sm text-gray-600">Generate a compact AI transfer plan and validate it deterministically.</p>
+                            <p class="text-xs text-purple-600 mt-2">Requires AI_PROVIDER=groq</p>
                         </button>
                     </div>
                 </div>
@@ -414,6 +433,43 @@
                                 Analysis of <span x-text="aiResponse?.context_used?.store_data?.length || 0"></span> stores and 
                                 <span x-text="aiResponse?.context_used?.products?.length || 0"></span> products
                             </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Plan Validated Output -->
+                <div x-show="aiPlan" class="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div class="p-6 border-b bg-purple-50 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-900">AI Plan (Validated)</h3>
+                            <p class="text-sm text-purple-700 mt-1" x-text="'Query: ' + aiPlan?.query"></p>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">Source: AI→API</span>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-sm text-gray-700 mb-4">
+                            <div class="font-medium">Raw Proposal (from AI):</div>
+                            <pre class="mt-2 p-3 bg-gray-50 rounded overflow-x-auto text-xs"><code x-text="JSON.stringify(aiPlan?.plan, null, 2)"></code></pre>
+                        </div>
+                        <div class="text-sm text-gray-700">
+                            <div class="font-medium mb-2">Feasible Transfers:</div>
+                            <template x-if="(aiPlan?.validation?.feasible_transfers || []).length === 0">
+                                <p class="text-gray-500">No feasible transfers found.</p>
+                            </template>
+                            <template x-for="t in (aiPlan?.validation?.feasible_transfers || [])" :key="t.from_store + '-' + t.to_store">
+                                <div class="border border-gray-200 rounded-lg p-4 mb-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="font-medium text-gray-900" x-text="t.from_store + ' → ' + t.to_store"></div>
+                                        <div class="text-purple-700 text-sm">ROI: <span x-text="t.roi_ratio"></span>x</div>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs mt-2">
+                                        <div>Qty: <span class="font-medium" x-text="t.transfer_quantity"></span></div>
+                                        <div>Distance: <span class="font-medium" x-text="t.distance_km + ' km'"></span></div>
+                                        <div>Cost: ₹<span class="font-medium" x-text="t.transport_cost"></span></div>
+                                        <div>Revenue: ₹<span class="font-medium" x-text="t.potential_revenue"></span></div>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </div>
@@ -480,6 +536,257 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Refine Section -->
+                <div x-show="aiResponse && sessionId" class="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div class="p-6 border-b bg-purple-50 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-900">Refine AI Response</h3>
+                            <p class="text-sm text-purple-700 mt-1">Session: <span x-text="sessionId"></span></p>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">AI</span>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Refinement Instruction</label>
+                            <input x-model="refineInstruction" @keyup.enter="refineAIResponse()" type="text" placeholder="e.g., Focus more on ROI and reduce suggestions to top 2"
+                                   class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        </div>
+                        <div class="flex space-x-3">
+                            <button @click="refineAIResponse()" :disabled="!refineInstruction.trim() || refineLoading" class="bg-purple-600 text-white px-5 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                                <span x-show="!refineLoading">Refine</span>
+                                <span x-show="refineLoading">Refining...</span>
+                            </button>
+                            <button @click="refineInstruction = ''" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 text-gray-700">Clear</button>
+                        </div>
+                        <p class="text-xs text-gray-500">Refinement keeps structured sections (SUMMARY, KEY_METRICS, RECOMMENDATIONS, RISKS, FOLLOW_UP_QUESTION).</p>
+                    </div>
+                </div>
+
+                <!-- AI Plan Validated Output -->
+                <div x-show="aiPlan" class="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div class="p-6 border-b bg-purple-50 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-900">AI Plan (Validated)</h3>
+                            <p class="text-sm text-purple-700 mt-1" x-text="'Query: ' + aiPlan?.query"></p>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">Source: AI→API</span>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-sm text-gray-700 mb-4">
+                            <div class="font-medium">Raw Proposal (from AI):</div>
+                            <pre class="mt-2 p-3 bg-gray-50 rounded overflow-x-auto text-xs"><code x-text="JSON.stringify(aiPlan?.plan, null, 2)"></code></pre>
+                        </div>
+                        <div class="text-sm text-gray-700">
+                            <div class="font-medium mb-2">Feasible Transfers:</div>
+                            <template x-if="(aiPlan?.validation?.feasible_transfers || []).length === 0">
+                                <p class="text-gray-500">No feasible transfers found.</p>
+                            </template>
+                            <template x-for="t in (aiPlan?.validation?.feasible_transfers || [])" :key="t.from_store + '-' + t.to_store">
+                                <div class="border border-gray-200 rounded-lg p-4 mb-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="font-medium text-gray-900" x-text="t.from_store + ' → ' + t.to_store"></div>
+                                        <div class="text-purple-700 text-sm">ROI: <span x-text="t.roi_ratio"></span>x</div>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs mt-2">
+                                        <div>Qty: <span class="font-medium" x-text="t.transfer_quantity"></span></div>
+                                        <div>Distance: <span class="font-medium" x-text="t.distance_km + ' km'"></span></div>
+                                        <div>Cost: ₹<span class="font-medium" x-text="t.transport_cost"></span></div>
+                                        <div>Revenue: ₹<span class="font-medium" x-text="t.potential_revenue"></span></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evaluation Tab -->
+            <div x-show="activeTab === 'evaluation'" class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">LLM Plan Evaluation</h3>
+                    <p class="text-sm text-gray-600 mb-4">Run autonomous plan + judge scoring. Requires AI_PROVIDER=groq.</p>
+                    <div class="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0">
+                        <input x-model="evalGoal" type="text" placeholder="Enter planning goal" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                        <button @click="runEvaluation()" :disabled="!evalGoal.trim() || evalLoading" class="px-6 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"><span x-show="!evalLoading">Run Evaluation</span><span x-show="evalLoading">Evaluating...</span></button>
+                        <button @click="resetEvaluation()" class="px-4 py-3 rounded-lg border border-gray-300 hover:bg-gray-100 text-gray-700 text-sm">Reset</button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-3" x-show="evalResult">Correlation ID: <span class="font-mono" x-text="evalResult?.correlation_id"></span> <button @click="loadEvalAudit()" class="text-blue-600 underline ml-2" x-show="evalResult && !evalAuditLoading">Audit</button><span x-show="evalAuditLoading" class="ml-2 text-gray-400">...</span></p>
+                </div>
+
+                <div x-show="evalResult" class="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div class="p-6 border-b bg-purple-50 flex items-center justify-between">
+                        <div>
+                            <h4 class="text-lg font-semibold text-purple-900">Judge Scores</h4>
+                            <p class="text-sm text-purple-700 mt-1" x-text="'Goal: ' + evalGoal"></p>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">LLM Judge</span>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <table class="min-w-full text-sm">
+                                <tbody>
+                                    <template x-for="row in judgeScoreRows" :key="row.key">
+                                        <tr class="border-b last:border-0">
+                                            <td class="py-2 pr-3 font-medium text-gray-700" x-text="row.label"></td>
+                                            <td class="py-2 w-40">
+                                                <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                                    <div class="h-2 bg-blue-600" :style="'width:' + row.pct + '%'" ></div>
+                                                </div>
+                                            </td>
+                                            <td class="py-2 pl-3 font-mono text-xs text-gray-600" x-text="row.value"></td>
+                                        </tr>
+                                    </template>
+                                    <tr class="bg-gray-50 font-semibold">
+                                        <td class="py-2 pr-3 text-gray-800">Overall</td>
+                                        <td class="py-2" colspan="2">
+                                            <div class="flex items-center space-x-3">
+                                                <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                                    <div class="h-3 bg-green-600" :style="'width:' + overallPct + '%'" ></div>
+                                                </div>
+                                                <span class="font-mono text-sm text-gray-800" x-text="evalResult?.judge?.overall"></span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="mt-4" x-show="evalResult?.judge?.feedback?.length">
+                                <h5 class="text-sm font-semibold text-gray-700 mb-2">Judge Feedback</h5>
+                                <ul class="list-disc ml-6 text-xs space-y-1">
+                                    <template x-for="f in evalResult.judge.feedback" :key="f">
+                                        <li x-text="f"></li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="text-sm font-semibold text-gray-700 mb-2">Plan Steps</h5>
+                            <template x-if="(evalResult?.plan?.steps || []).length === 0">
+                                <p class="text-xs text-gray-500">No steps recorded.</p>
+                            </template>
+                            <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                                <template x-for="s in (evalResult?.plan?.steps || [])" :key="s.step">
+                                    <div class="border border-gray-200 rounded p-2">
+                                        <div class="flex items-center justify-between text-xs mb-1">
+                                            <span class="font-medium text-gray-800" x-text="'Step ' + s.step"></span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold" :class="s.action?.type === 'tool' ? 'bg-blue-100 text-blue-700' : (s.action?.type==='final' ? 'bg-green-100 text-green-700':'bg-gray-100 text-gray-600')" x-text="s.action?.type || 'n/a'"></span>
+                                        </div>
+                                        <div class="text-[11px] text-gray-600" x-text="(s.reasoning || '').slice(0,160)"></div>
+                                        <div class="text-[10px] mt-1 text-gray-500" x-show="s.action?.tool_name">Tool: <span class="font-mono" x-text="s.action?.tool_name"></span></div>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="mt-5">
+                                <h5 class="text-sm font-semibold text-gray-700 mb-2">Deterministic Metrics</h5>
+                                <pre class="text-[11px] bg-gray-50 rounded p-2 overflow-x-auto" x-text="JSON.stringify(evalResult?.metrics, null, 2)"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="evalAudit" class="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div class="p-4 border-b flex items-center justify-between bg-gray-50">
+                        <h5 class="text-sm font-semibold text-gray-800">Audit Record</h5>
+                        <button @click="evalAudit=null" class="text-xs text-gray-500 hover:text-gray-700">Close</button>
+                    </div>
+                    <div class="p-4">
+                        <pre class="text-[11px] bg-gray-50 rounded p-3 overflow-x-auto" x-text="JSON.stringify(evalAudit, null, 2)"></pre>
+                    </div>
+                </div>
+
+                <div class="text-xs text-gray-500 p-4 border rounded-lg bg-gray-50">
+                    <span class="font-semibold">Traceability Tips:</span>
+                    1) Use correlation ID to fetch audit JSON. 2) Compare used_tools vs plan steps. 3) Inspect memory via /api/memory/stats & /api/memory/recent. 4) Re-run with same goal to reproduce path. 5) All audit files stored under logs/audit/YYYY-MM-DD/.
+                </div>
+            </div>
+
+            <!-- Memory Tab -->
+            <div x-show="activeTab === 'memory'" class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Agent Memory</h3>
+                    <p class="text-sm text-gray-600">Inspect persistent tool results & summaries leveraged during planning.</p>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div class="p-4 border rounded-lg bg-gray-50">
+                            <div class="text-xs uppercase tracking-wide text-gray-500 mb-1">Totals</div>
+                            <div class="text-2xl font-semibold" x-text="memoryStats?.total_items ?? '-' "></div>
+                            <p class="text-xs text-gray-500 mt-1">Items stored</p>
+                        </div>
+                        <div class="p-4 border rounded-lg bg-gray-50">
+                            <div class="text-xs uppercase tracking-wide text-gray-500 mb-1">Avg Importance</div>
+                            <div class="text-2xl font-semibold" x-text="(memoryStats?.avg_importance ?? 0).toFixed(2)"></div>
+                            <p class="text-xs text-gray-500 mt-1">Heuristic score</p>
+                        </div>
+                        <div class="p-4 border rounded-lg bg-gray-50">
+                            <div class="text-xs uppercase tracking-wide text-gray-500 mb-1">Types</div>
+                            <div class="text-xs space-y-1" x-show="memoryStats?.by_type">
+                                <template x-for="(v,k) in memoryStats.by_type" :key="k">
+                                    <div><span class="font-medium" x-text="k"></span>: <span x-text="v"></span></div>
+                                </template>
+                            </div>
+                            <p class="text-xs text-gray-400" x-show="!memoryStats?.by_type">--</p>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex flex-col md:flex-row md:items-end md:space-x-4 space-y-3 md:space-y-0">
+                        <div class="flex-1">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Search Memory</label>
+                            <input x-model="memoryQuery" @keyup.enter="runMemoryQuery()" placeholder="keyword (e.g. monsoon, transfer)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                        </div>
+                        <div class="flex space-x-2">
+                            <button @click="runMemoryQuery()" :disabled="!memoryQuery.trim() || memoryLoading" class="px-4 py-3 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400">Search</button>
+                            <button @click="refreshMemory()" :disabled="memoryLoading" class="px-4 py-3 rounded-lg border text-sm font-medium hover:bg-gray-100">Refresh</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2" x-show="memoryQueryResults">Showing <span x-text="(memoryQueryResults?.results || []).length"></span> results for '<span x-text="memoryQuery"></span>'.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                        <div class="p-4 border-b bg-emerald-50 flex items-center justify-between">
+                            <h4 class="text-sm font-semibold text-emerald-900">Recent Memory Items</h4>
+                            <span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full" x-text="(memoryRecent||[]).length + ' items'"></span>
+                        </div>
+                        <div class="p-4 space-y-3 max-h-96 overflow-y-auto text-xs">
+                            <template x-if="(memoryRecent||[]).length === 0">
+                                <p class="text-gray-500">No memory records yet.</p>
+                            </template>
+                            <template x-for="m in memoryRecent" :key="m.id || m.timestamp + (m.type||'')">
+                                <div class="border border-gray-200 rounded p-3">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="font-medium text-gray-700" x-text="m.type || 'item'"></span>
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600" x-text="(m.importance ?? 0).toFixed(2)"></span>
+                                    </div>
+                                    <div class="text-[11px] text-gray-600 whitespace-pre-line" x-text="(m.text || m.content || '').slice(0,260)"></div>
+                                    <div class="mt-1 text-[10px] text-gray-400" x-text="m.timestamp"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                        <div class="p-4 border-b bg-blue-50 flex items-center justify-between">
+                            <h4 class="text-sm font-semibold text-blue-900">Query Results</h4>
+                            <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full" x-text="(memoryQueryResults?.results||[]).length + ' hits'"></span>
+                        </div>
+                        <div class="p-4 space-y-3 max-h-96 overflow-y-auto text-xs">
+                            <template x-if="!(memoryQueryResults?.results||[]).length">
+                                <p class="text-gray-500">No query results yet.</p>
+                            </template>
+                            <template x-for="r in (memoryQueryResults?.results||[])" :key="r.id || r.timestamp + (r.type||'')">
+                                <div class="border border-gray-200 rounded p-3">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="font-medium text-gray-700" x-text="r.type || 'result'"></span>
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600" x-text="(r.score ? r.score.toFixed(2) : (r.importance ?? 0).toFixed(2))"></span>
+                                    </div>
+                                    <div class="text-[11px] text-gray-600 whitespace-pre-line" x-text="(r.text || r.content || '').slice(0,260)"></div>
+                                    <div class="mt-1 text-[10px] text-gray-400" x-text="r.timestamp"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-xs text-gray-500 p-4 border rounded-lg bg-gray-50">
+                    <span class="font-semibold">Usage Notes:</span> Items are added after tool execution and summary synthesis. Relevance selection uses decay + token overlap. Use consistent goal phrasing to maximize reuse.
+                </div>
             </div>
         </main>
 
@@ -513,14 +820,27 @@
             queryResult: null,
             aiQuery: '',
             aiResponse: null,
+            aiPlan: null,
+            sessionId: null,
+            refineInstruction: '',
+            refineLoading: false,
             filters: { search: '', status: '', location: '' },
-
-            async init() {
-                await this.loadStores();
-                await this.loadProducts();
-                await this.loadStoresSummary();
-            },
-
+            // Evaluation state
+            evalGoal: 'Improve monsoon gear distribution across understocked stores',
+            evalResult: null,
+            evalAudit: null,
+            evalLoading: false,
+            evalAuditLoading: false,
+            // Memory state
+            memoryStats: null,
+            memoryRecent: [],
+            memoryQuery: '',
+            memoryQueryResults: null,
+            memoryLoading: false,
+            // Removed stockUpdate state
+            // stockUpdate: { storeId: '', newStock: null, runAI: false, aiResponse: null },
+            // stockLoading: false,
+            async init() { await this.loadStores(); await this.loadProducts(); await this.loadStoresSummary(); },
             get filteredStores() {
                 const s = this.filters.search.toLowerCase();
                 return this.stores.filter(st => {
@@ -530,14 +850,26 @@
                     return matchesSearch && matchesStatus && matchesLocation;
                 });
             },
-
             get averageUtilization() {
                 if (!this.stores.length) return 0;
                 const list = this.filteredStores.length ? this.filteredStores : this.stores;
                 const total = list.reduce((sum, store) => sum + store.utilization_percent, 0);
                 return Math.round(total / list.length);
             },
-
+            get judgeScoreRows() {
+                if (!this.evalResult?.judge) return [];
+                const j = this.evalResult.judge;
+                const map = [
+                    ['goal_alignment','Goal Alignment',5],
+                    ['tool_sequence_quality','Tool Sequence',5],
+                    ['reasoning_clarity','Reasoning Clarity',5],
+                    ['action_efficiency','Action Efficiency',5],
+                    ['memory_utilization','Memory Use',5],
+                    ['risk_identification','Risk ID',3]
+                ];
+                return map.map(m => ({ key: m[0], label: m[1], value: j[m[0]], pct: Math.min(100, (j[m[0]]/m[2])*100) }));
+            },
+            get overallPct() { return this.evalResult?.judge ? Math.min(100,(this.evalResult.judge.overall/10)*100) : 0; },
             async loadStores() {
                 this.isLoading = true;
                 try {
@@ -550,7 +882,6 @@
                     this.isLoading = false;
                 }
             },
-
             async loadProducts() {
                 try {
                     const response = await fetch('/api/products');
@@ -559,7 +890,6 @@
                     console.error('Error loading products:', error);
                 }
             },
-
             async loadStoresSummary() {
                 try {
                     const response = await fetch('/api/stores/status-summary');
@@ -568,7 +898,6 @@
                     console.error('Error loading stores summary:', error);
                 }
             },
-
             async getTransferRecommendations(productId) {
                 this.isLoading = true;
                 try {
@@ -584,7 +913,6 @@
                     this.isLoading = false;
                 }
             },
-
             async getSeasonalOptimization() {
                 if (!this.selectedSeasonalProduct) return;
                 
@@ -602,65 +930,113 @@
                     this.isLoading = false;
                 }
             },
-
             async executeMonsoonQuery() {
                 this.isLoading = true;
                 try {
-                    const response = await fetch('/api/chat/inventory', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `query=${encodeURIComponent('Transfer monsoon gear from Mysore to Bangalore')}`
-                    });
-                    this.aiResponse = await response.json();
+                    const body = `query=${encodeURIComponent('Transfer monsoon gear from Mysore to Bangalore')}` + (this.sessionId ? `&session_id=${encodeURIComponent(this.sessionId)}` : '');
+                    const response = await fetch('/api/chat/inventory', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+                    const data = await response.json();
+                    this.aiResponse = data;
+                    if (data.session_id) this.sessionId = data.session_id;
                     this.activeTab = 'ai-chat';
-                } catch (error) {
-                    console.error('Error executing monsoon query via AI:', error);
-                } finally {
-                    this.isLoading = false;
-                }
+                } catch (e) { console.error(e); } finally { this.isLoading = false; }
             },
-
             async executeFestiveQuery() {
                 this.isLoading = true;
                 try {
-                    const response = await fetch('/api/chat/inventory', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `query=${encodeURIComponent('Optimize festive wear distribution for Diwali season')}`
-                    });
-                    this.aiResponse = await response.json();
+                    const body = `query=${encodeURIComponent('Optimize festive wear distribution for Diwali season')}` + (this.sessionId ? `&session_id=${encodeURIComponent(this.sessionId)}` : '');
+                    const response = await fetch('/api/chat/inventory', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+                    const data = await response.json();
+                    this.aiResponse = data;
+                    if (data.session_id) this.sessionId = data.session_id;
                     this.activeTab = 'ai-chat';
-                } catch (error) {
-                    console.error('Error executing festive query via AI:', error);
-                } finally {
-                    this.isLoading = false;
-                }
+                } catch (e) { console.error(e); } finally { this.isLoading = false; }
             },
-
             async sendAIQuery() {
-                if (!this.aiQuery.trim()) return;
-                
+                if (!this.aiQuery.trim()) return; this.isLoading = true;
+                try {
+                    const body = `query=${encodeURIComponent(this.aiQuery)}` + (this.sessionId ? `&session_id=${encodeURIComponent(this.sessionId)}` : '');
+                    const response = await fetch('/api/chat/inventory', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+                    const data = await response.json();
+                    this.aiResponse = data;
+                    if (data.session_id) this.sessionId = data.session_id;
+                    this.aiQuery = '';
+                } catch (e) { console.error(e); } finally { this.isLoading = false; }
+            },
+            async refineAIResponse() {
+                if (!this.refineInstruction.trim() || !this.sessionId) return; this.refineLoading = true;
+                try {
+                    const body = `session_id=${encodeURIComponent(this.sessionId)}&instruction=${encodeURIComponent(this.refineInstruction)}`;
+                    const resp = await fetch('/api/chat/refine', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+                    if (!resp.ok) { const err = await resp.json().catch(()=>({detail:'Refine failed'})); throw new Error(err.detail); }
+                    const data = await resp.json();
+                    // Update aiResponse but keep context/query
+                    if (this.aiResponse) {
+                        this.aiResponse.ai_analysis = data.ai_analysis;
+                    } else {
+                        this.aiResponse = { query: 'Refined', ai_analysis: data.ai_analysis, context_used: {}, session_id: data.session_id };
+                    }
+                    this.refineInstruction = '';
+                } catch (e) { console.error('Refine error:', e); } finally { this.refineLoading = false; }
+            },
+            async executeAIPlan() {
                 this.isLoading = true;
                 try {
-                    const response = await fetch('/api/chat/inventory', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `query=${encodeURIComponent(this.aiQuery)}`
-                    });
-                    this.aiResponse = await response.json();
-                    this.aiQuery = ''; // Clear input after sending
-                } catch (error) {
-                    console.error('Error sending AI query:', error);
-                    this.aiResponse = {
-                        query: this.aiQuery,
-                        ai_analysis: 'Sorry, I encountered an error processing your request. Please try again.',
-                        context_used: {}
-                    };
-                } finally {
-                    this.isLoading = false;
-                }
+                    const response = await fetch('/api/chat/plan', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `query=${encodeURIComponent('Propose a compact transfer plan for monsoon gear')}` });
+                    if (!response.ok) { const err = await response.json().catch(()=>({})); throw new Error(err.detail || 'AI plan failed'); }
+                    this.aiPlan = await response.json(); this.activeTab = 'ai-chat';
+                    // NEW: refresh memory after plan since tools executed
+                    this.refreshMemory();
+                } catch (e) { console.error(e); this.aiPlan = { query: 'AI Plan', plan: {}, validation: { feasible_transfers: [] }, ai_analysis: String(e) }; }
+                finally { this.isLoading = false; }
             },
-
+            async runEvaluation() {
+                if (!this.evalGoal.trim()) return; this.evalLoading = true; this.evalResult=null; this.evalAudit=null;
+                try {
+                    const body = `goal=${encodeURIComponent(this.evalGoal)}`;
+                    const resp = await fetch('/api/eval/auto-plan', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body });
+                    if (!resp.ok) { const err = await resp.json().catch(()=>({detail:'Eval failed'})); throw new Error(err.detail); }
+                    this.evalResult = await resp.json();
+                    this.activeTab = 'evaluation';
+                    // NEW: refresh memory after plan run (judge adds summary/tool results)
+                    this.refreshMemory();
+                } catch(e){ console.error('Evaluation error:', e); alert('Evaluation failed: ' + e.message); } finally { this.evalLoading=false; }
+            },
+            async loadEvalAudit() {
+                if (!this.evalResult?.correlation_id) return; this.evalAuditLoading=true;
+                try {
+                    const resp = await fetch(`/api/audit/${this.evalResult.correlation_id}`);
+                    if (resp.ok) { this.evalAudit = await resp.json(); } else { this.evalAudit = { error: 'Audit not found' }; }
+                } catch(e){ console.error(e); this.evalAudit = { error: e.message }; } finally { this.evalAuditLoading=false; }
+            },
+            resetEvaluation(){ this.evalResult=null; this.evalAudit=null; this.evalGoal=''; },
+            openMemoryTab() { this.activeTab='memory'; this.refreshMemory(); },
+            async refreshMemory() { this.memoryLoading=true; try { await Promise.all([this.loadMemoryStats(), this.loadMemoryRecent()]); } finally { this.memoryLoading=false; } },
+            async loadMemoryStats() { try { const r = await fetch('/api/memory/stats'); this.memoryStats = await r.json(); } catch(e){ console.error('memory stats', e);} },
+            async loadMemoryRecent() { try { const r = await fetch('/api/memory/recent?limit=20'); const d = await r.json(); this.memoryRecent = d.items || []; } catch(e){ console.error('memory recent', e);} },
+            async runMemoryQuery() { if(!this.memoryQuery.trim()) return; this.memoryLoading=true; try { const r = await fetch(`/api/memory/query?q=${encodeURIComponent(this.memoryQuery)}&limit=15`); this.memoryQueryResults = await r.json(); } catch(e){ console.error('memory query', e);} finally { this.memoryLoading=false; } },
+            async applyStockUpdate() {
+                if(!this.stockUpdate.storeId || this.stockUpdate.newStock===null) return; this.stockLoading=true;
+                try {
+                    const body = new URLSearchParams({ store_id: this.stockUpdate.storeId, new_stock: String(this.stockUpdate.newStock), auto_recalc: 'true' });
+                    const resp = await fetch('/api/stores/update_stock', { method: 'POST', body });
+                    if(!resp.ok){ const err = await resp.json().catch(()=>({detail:'Update failed'})); throw new Error(err.detail); }
+                    const data = await resp.json();
+                    // refresh local stores summary (lightweight re-pull)
+                    await this.loadStores();
+                    await this.loadStoresSummary();
+                    this.stockUpdate.aiResponse = null;
+                    if (this.stockUpdate.runAI) {
+                        // Ask AI: which transfers now most urgent for this store
+                        const storeName = (this.stores.find(s=>s.store_id===this.stockUpdate.storeId)||{}).store_name || 'this store';
+                        const q = `After stock update at ${storeName}, what urgent inventory actions should I consider?`;
+                        const bodyAI = `query=${encodeURIComponent(q)}`;
+                        const aiResp = await fetch('/api/chat/inventory', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: bodyAI });
+                        if(aiResp.ok){ const aiData = await aiResp.json(); this.stockUpdate.aiResponse = aiData.ai_analysis.slice(0,1200); }
+                    }
+                } catch(e){ console.error(e); alert(e.message); }
+                finally { this.stockLoading=false; }
+            },
             formatAIResponse(text) {
                 if (!text) return '';
                 const escape = (s) => s

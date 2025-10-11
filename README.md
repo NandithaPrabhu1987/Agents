@@ -2,6 +2,85 @@
 
 An AI-powered inventory optimization system designed for retail chain operations across India. This agent helps store operations managers optimize inventory distribution, prevent stockouts, reduce overstock situations, and maximize sales opportunities through intelligent inter-store transfers.
 
+## How the UI template is used
+- The dashboard HTML is at `templates/inventory_dashboard.html`.
+- FastAPI serves it at `/` using `TemplateResponse`.
+- The page loads data via fetch calls to the backend APIs and shows badges indicating the data source:
+  - Overview, Transfers, Seasonal: Source: API (deterministic engine)
+  - AI Assistant, Sample Queries: Source: AI (LLM response)
+
+## Where GenAI is used vs. Code logic
+- Deterministic (no LLM): All calculations and decisions
+  - Inventory status, gaps, utilization, days of inventory
+  - Distances, transport costs, ETA
+  - Transfer recommendations (who → whom, quantities, ROI, priority)
+  - Seasonal optimization and scheduling
+  - Files: `src/inventory_agent.py` (algorithms), `src/routers/inventory_routes.py` (endpoints)
+- Generative (LLM): Natural-language explanation and Q&A
+  - Endpoint: `POST /api/chat/inventory`
+  - Tabs: AI Assistant and Sample Queries
+  - Provider: Groq (`AI_PROVIDER=groq`, `GROQ_MODEL=llama-3.3-70b-versatile`)
+  - Behavior: Explains context in bullets/headings, prioritizes actions, summarizes risks
+  - No rule-based fallback when `AI_PROVIDER=groq` (explicit failure is returned)
+
+## Optional LLM planning (proposal → validated by engine)
+- The Groq service includes `analyze_and_propose_plan()` which asks the model to return a compact JSON plan proposal:
+  ```json
+  {
+    "product": "Monsoon Raincoats Premium",
+    "product_id": "<id>",
+    "from_stores": ["Mysore"],
+    "to_stores": ["Bangalore"],
+    "quantity_cap": 60,
+    "priority": "urgent",
+    "rationale": ["short bullet 1", "short bullet 2"]
+  }
+  ```
+- This is not executed directly. The backend should validate any proposal using the deterministic engine (stock levels, capacity, distance, ROI) before acting.
+
+## API overview (how tabs call APIs)
+- Overview (API): `GET /api/stores/status-summary`
+- Transfers (API): `POST /api/transfers/recommend` (form: `product_id`)
+- Seasonal (API): `POST /api/seasonal/optimize` (form: `product_id`, optional `season`)
+- AI Assistant (AI): `POST /api/chat/inventory` (form: `query`)
+- Sample Queries (AI): routed to `/api/chat/inventory` with prefilled prompts
+
+## Configure AI provider
+- Default: rule-based deterministic (`AI_PROVIDER=rule`)
+- Groq LLM: set `.env`
+  ```bash
+  AI_PROVIDER=groq
+  GROQ_API_KEY=... # keep this secret (in .env, not committed)
+  GROQ_MODEL=llama-3.3-70b-versatile
+  ```
+- `main.py` loads `.env` via `load_dotenv()` before router initialization.
+
+## Project structure (key files)
+```
+├── main.py                         # FastAPI bootstrap, registers routers
+├── src/
+│   ├── inventory_agent.py          # Core business logic, models, distance logic
+│   ├── routers/
+│   │   └── inventory_routes.py     # All API endpoints and dashboard route
+│   ├── services/
+│   │   └── ai_service.py           # Rule-based AI service (deterministic)
+│   ├── data/
+│   │   └── seed.py                 # Sample stores and products
+│   └── groq_service.py             # Groq LLM integration (explanations + JSON plan)
+├── templates/
+│   └── inventory_dashboard.html    # Web interface (with filters + AI tab)
+├── requirements.txt                # Dependencies
+└── README.md                       # Documentation
+```
+
+## Security
+- `.env` is in `.gitignore`. Never commit API keys.
+- If a key was exposed, rotate it immediately in the provider console.
+
+# Supply Chain Inventory Rebalancing Agent
+
+An AI-powered inventory optimization system designed for retail chain operations across India. This agent helps store operations managers optimize inventory distribution, prevent stockouts, reduce overstock situations, and maximize sales opportunities through intelligent inter-store transfers.
+
 ## 🎯 Purpose
 
 As a Store Operations Manager at a mid-size retail chain operating 10 stores across India, you need to:

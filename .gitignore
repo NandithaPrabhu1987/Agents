@@ -38,3 +38,26 @@ node_modules/
 # App secrets and local config
 .env
 .env.*
+
+# Runtime data and logs
+logs/
+memory/
+vector_store/
+
+# Keep example env committed
+!.env.example
+
+# Additional caches and local artifacts
+**/.DS_Store
+*.sqlite3
+*.db
+*.npy
+*.npz
+*.cache/
+.cache*/
+__snapshots__/
+coverage/
+.pyre/
+
+# VSCode settings except tasks.json (optional). Keep workspace clean if needed
+!.vscode/tasks.json
