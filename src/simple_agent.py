@@ -65,15 +65,40 @@ class SimpleInventoryAgent:
     def reset(self) -> Dict[str, Any]:
         self.state = SimpleInventoryState()
         self.state.save()
-        return {"ok": True, "message": "State reset", "state": self.state.to_dict()}
+        return {"ok": True, "message": "✅ System reset to defaults: Store 1 = 100 units, Store 2 = 200 units, Week = 0", "state": self.state.to_dict()}
 
     def set_demand(self, s1: int, s2: int) -> Dict[str, Any]:
+        # Validation guardrails
+        try:
+            s1 = int(s1)
+            s2 = int(s2)
+        except (ValueError, TypeError):
+            return {
+                "ok": False,
+                "message": "⚠️ Invalid demand values: must be integers",
+                "state": self.state.to_dict(),
+            }
+        
+        if s1 < 0 or s2 < 0:
+            return {
+                "ok": False,
+                "message": "⚠️ Demand cannot be negative",
+                "state": self.state.to_dict(),
+            }
+        
+        if s1 > 1000 or s2 > 1000:
+            return {
+                "ok": False,
+                "message": "⚠️ Demand too high (max 1000 units per store)",
+                "state": self.state.to_dict(),
+            }
+        
         self.state.demand_s1 = max(0, int(s1))
         self.state.demand_s2 = max(0, int(s2))
         self.state.save()
         return {
             "ok": True,
-            "message": f"Weekly demand set: S1={self.state.demand_s1}, S2={self.state.demand_s2}",
+            "message": f"📦 Weekly demand updated: Store 1 = {self.state.demand_s1} units/week, Store 2 = {self.state.demand_s2} units/week",
             "state": self.state.to_dict(),
         }
 
@@ -92,13 +117,31 @@ class SimpleInventoryAgent:
         return ref
 
     def transfer(self, src: str, dst: str, amount: int) -> Dict[str, Any]:
+        # Validation guardrails
         if amount is None:
             amount = 0
-        qty = max(0, int(amount))
+        
+        try:
+            qty = int(amount)
+        except (ValueError, TypeError):
+            return {"ok": False, "message": "⚠️ Invalid transfer amount: must be an integer", "state": self.state.to_dict()}
+        
+        if qty < 0:
+            return {"ok": False, "message": "⚠️ Transfer amount cannot be negative", "state": self.state.to_dict()}
+        
+        if qty > 500:
+            return {"ok": False, "message": "⚠️ Transfer amount too high (max 500 units)", "state": self.state.to_dict()}
+        
+        qty = max(0, qty)
         if qty == 0:
             return {"ok": True, "message": "No transfer (0 qty)", "moved": 0, "state": self.state.to_dict()}
-        src_key = self._get_stock_ref(src)
-        dst_key = self._get_stock_ref(dst)
+        
+        try:
+            src_key = self._get_stock_ref(src)
+            dst_key = self._get_stock_ref(dst)
+        except ValueError as e:
+            return {"ok": False, "message": f"⚠️ {str(e)}", "state": self.state.to_dict()}
+        
         if src_key == dst_key:
             return {"ok": True, "message": "No transfer (same store)", "moved": 0, "state": self.state.to_dict()}
         # donor surplus = max(stock - its own demand, 0)
@@ -114,10 +157,23 @@ class SimpleInventoryAgent:
         self.state.last_transfer = {"from": src_key, "to": dst_key, "moved": moved}
         self.state.save()
         transfer_obj = {"from": self._ref_to_code(src_key), "to": self._ref_to_code(dst_key), "amount": moved}
-        msg = f"Transferred {moved} from {src} to {dst}" + (" (limited by donor surplus)" if moved < qty else "")
+        limitation = " (limited by donor surplus to prevent stockout)" if moved < qty else ""
+        msg = f"🔄 Transferred {moved} units from {src.upper()} to {dst.upper()}{limitation}"
         return {"ok": True, "message": msg, "moved": moved, "transfer": transfer_obj, "surplus": surplus, "state": self.state.to_dict()}
 
     def step_week(self, weeks: int = 1) -> Dict[str, Any]:
+        # Validation guardrails
+        try:
+            weeks = int(weeks)
+        except (ValueError, TypeError):
+            return {"ok": False, "message": "⚠️ Invalid weeks value: must be an integer", "state": self.state.to_dict()}
+        
+        if weeks < 1:
+            return {"ok": False, "message": "⚠️ Weeks must be at least 1", "state": self.state.to_dict()}
+        
+        if weeks > 52:
+            return {"ok": False, "message": "⚠️ Cannot simulate more than 52 weeks", "state": self.state.to_dict()}
+        
         weeks = max(1, int(weeks))
         timeline = []
         for _ in range(weeks):
@@ -155,7 +211,13 @@ class SimpleInventoryAgent:
             }
             timeline.append(details)
         self.state.save()
-        return {"ok": True, "message": f"Simulated {weeks} week(s)", "timeline": timeline, "state": self.state.to_dict()}
+        total_unmet_s1 = sum(t.get("unmet_demand", {}).get("s1", 0) for t in timeline)
+        total_unmet_s2 = sum(t.get("unmet_demand", {}).get("s2", 0) for t in timeline)
+        status_emoji = "✅" if (total_unmet_s1 == 0 and total_unmet_s2 == 0) else "⚠️"
+        msg = f"{status_emoji} Simulated {weeks} week(s). Final stocks: S1={self.state.store1_stock}, S2={self.state.store2_stock}"
+        if total_unmet_s1 > 0 or total_unmet_s2 > 0:
+            msg += f" | Unmet demand: S1={total_unmet_s1}, S2={total_unmet_s2}"
+        return {"ok": True, "message": msg, "timeline": timeline, "state": self.state.to_dict()}
 
     # -------- Prompt interface (deprecated in LLM-only mode) --------
     def handle_prompt(self, prompt: str) -> Tuple[str, Dict[str, Any]]:

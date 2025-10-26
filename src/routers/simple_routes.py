@@ -191,37 +191,76 @@ async def simple_reset():
 
 @router.post("/api/simple/prompt")
 async def simple_prompt(prompt: str = Form(...)):
+    # Validation guardrails
+    if not prompt or len(prompt.strip()) == 0:
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+    
+    if len(prompt) > 2000:
+        raise HTTPException(status_code=400, detail="Prompt too long (max 2000 characters)")
+    
+    # Rate limiting check (basic)
+    sanitized_prompt = prompt.strip()[:2000]
+    
     status_obj = _agent.status()
     plain_state = status_obj.get("state", {})
     try:
         planner = LLMPlanner()
-        plan = planner.plan(plain_state, prompt)
+        plan = planner.plan(plain_state, sanitized_prompt)
+        
+        # Check if plan validation failed
+        if plan.get("action") == "explain" and "validation failed" in plan.get("rationale", "").lower():
+            raise HTTPException(status_code=400, detail=plan.get("rationale"))
+        
         applied = _apply_plan(plan)
         return {"mode": "groq", "plan": plan, "result": applied, "state": _agent.status()}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"LLM planning failed: {e}")
+        raise HTTPException(status_code=500, detail=f"LLM planning failed: {str(e)[:200]}")
 
 
 @router.post("/api/simple/llm")
 async def llm_analyze(request: Request):
     data = await request.json()
     question = (data.get("question") or "").strip()
+    
+    # Validation guardrails
     if not question:
         raise HTTPException(status_code=400, detail="question is required")
+    
+    if len(question) > 2000:
+        raise HTTPException(status_code=400, detail="Question too long (max 2000 characters)")
+    
     status_obj = _agent.status()
     plain_state = status_obj.get("state", {})
     try:
         planner = LLMPlanner()
         plan = planner.plan(plain_state, question)
+        
+        # Check if plan validation failed
+        if plan.get("action") == "explain" and "validation failed" in plan.get("rationale", "").lower():
+            return {"ok": False, "error": plan.get("rationale"), "state": status_obj}
+        
         return {"ok": True, "plan": plan, "state": status_obj}
     except Exception as e:
-        return {"ok": False, "error": str(e), "state": status_obj}
+        return {"ok": False, "error": str(e)[:200], "state": status_obj}
 
 
 @router.post("/api/simple/apply")
 async def simple_apply(request: Request):
     body = await request.json()
+    
+    # Validation guardrails
     if not isinstance(body, dict):
-        raise HTTPException(status_code=400, detail="plan must be an object")
-    applied = _apply_plan(body)
-    return {"ok": applied.get("ok", False), "result": applied, "state": _agent.status()}
+        raise HTTPException(status_code=400, detail="Plan must be a valid JSON object")
+    
+    # Validate actions array if present
+    actions = body.get("actions", [body]) if "actions" in body else [body]
+    if len(actions) > 50:
+        raise HTTPException(status_code=400, detail="Too many actions (max 50)")
+    
+    try:
+        applied = _apply_plan(body)
+        return {"ok": applied.get("ok", False), "result": applied, "state": _agent.status()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to apply plan: {str(e)[:200]}")

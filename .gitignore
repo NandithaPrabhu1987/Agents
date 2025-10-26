@@ -1,63 +1,37 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
 *.so
+.Python
 *.egg-info/
-.eggs/
-.mypy_cache/
-.pytype/
-.pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.cache/
+dist/
+build/
 
-# Environments
+# Virtual Environment
 .venv/
 venv/
-env/
-.python-version
+ENV/
 
-# OS / Editors
-.DS_Store
-.vscode/
-.idea/
+# Environment variables
+.env
+.env.bak
 
 # Logs
-*.log
+logs/audit/**/*.json
+logs/memory/*.jsonl
 
-# Build outputs
-build/
-dist/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# Node (if any frontend tooling is added later)
-node_modules/
+# OS
+.DS_Store
+Thumbs.db
 
-# App secrets and local config
-.env
-.env.*
-
-# Runtime data and logs
-logs/
-memory/
-vector_store/
-
-# Keep example env committed
-!.env.example
-
-# Additional caches and local artifacts
-**/.DS_Store
-*.sqlite3
-*.db
-*.npy
-*.npz
-*.cache/
-.cache*/
-__snapshots__/
-coverage/
-.pyre/
-
-# VSCode settings except tasks.json (optional). Keep workspace clean if needed
-!.vscode/tasks.json
+# Keep directory structure
+!logs/audit/.gitkeep
+!logs/memory/.gitkeep
+!logs/simple_agent/.gitkeep

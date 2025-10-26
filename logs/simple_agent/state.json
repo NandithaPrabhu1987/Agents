@@ -1,0 +1,9 @@
+{
+  "week": 0,
+  "store1_stock": 100,
+  "store2_stock": 200,
+  "demand_s1": 0,
+  "demand_s2": 0,
+  "last_transfer": null,
+  "last_unmet": null
+}

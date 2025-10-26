@@ -3,302 +3,537 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>2-Store Inventory Agent</title>
+  <title>Smart Inventory Manager - 2 Stores</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
-<body class="min-h-screen bg-gray-50 text-gray-900" x-data="app()">
-  <header class="bg-white border-b">
-    <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-      <h1 class="text-xl font-semibold">2-Store Inventory Agent</h1>
-      <div class="text-xs text-gray-500">LLM planned only · Transfers allowed S1↔S2</div>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 text-gray-900" x-data="app()">
+  <header class="bg-white border-b shadow-sm">
+    <div class="max-w-6xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-indigo-600">🏪 Smart Inventory Manager</h1>
+          <p class="text-sm text-gray-500 mt-1">AI-powered automatic stock transfers between stores</p>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-gray-400">Bidirectional Support</div>
+          <div class="text-lg font-semibold text-indigo-600">Store 1 ↔ Store 2</div>
+        </div>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-5xl mx-auto px-6 py-6 space-y-6">
+  <main class="max-w-6xl mx-auto px-6 py-6 space-y-6">
     <!-- Instructions banner -->
-    <section class="bg-amber-50 border border-amber-200 rounded p-4 text-sm text-amber-900">
-      <div class="font-medium">Quick start</div>
-      <ul class="list-disc ml-5 mt-1 space-y-1">
-        <li>Step 1: Set weekly demand (use a preset like S1=30, S2=20) and click “Set Demand”.</li>
-        <li>Step 2: Enter weeks (e.g., 2) and click “Run”.</li>
-        <li>Step 3: Click “Status” to refresh the cards above.</li>
-      </ul>
+    <section class="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-indigo-200 rounded-lg p-5 shadow-sm">
+      <div class="flex items-start gap-3">
+        <div class="text-2xl">💡</div>
+        <div class="flex-1">
+          <div class="font-semibold text-indigo-900 text-lg mb-2">How It Works</div>
+          <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div class="bg-white rounded-lg p-3 shadow-sm">
+              <div class="font-medium text-indigo-600 mb-1">① Set Demand</div>
+              <p class="text-gray-600">Choose weekly demand for each store (e.g., S1=30, S2=20)</p>
+            </div>
+            <div class="bg-white rounded-lg p-3 shadow-sm">
+              <div class="font-medium text-indigo-600 mb-1">② Ask AI</div>
+              <p class="text-gray-600">Use LLM Advisor to plan transfers and run simulation</p>
+            </div>
+            <div class="bg-white rounded-lg p-3 shadow-sm">
+              <div class="font-medium text-indigo-600 mb-1">③ Review Results</div>
+              <p class="text-gray-600">See automatic transfers and inventory status</p>
+            </div>
+          </div>
+          <div class="mt-3 p-3 bg-white rounded border border-indigo-100">
+            <span class="font-medium text-indigo-700">✨ Smart Transfer: </span>
+            <span class="text-gray-700">When any store runs low, AI automatically transfers from the other store to prevent stockouts!</span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- State Overview -->
     <section class="grid gap-4 grid-cols-1 md:grid-cols-4">
-      <div class="bg-white rounded-lg shadow p-4">
-        <div class="text-sm text-gray-500">Week</div>
-        <div class="text-2xl font-bold" x-text="(state?.week ?? 0)"></div>
-        <button class="mt-3 text-xs text-blue-600 hover:underline" @click="status()">Refresh</button>
+      <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-lg p-5 text-white">
+        <div class="text-sm opacity-90">Current Week</div>
+        <div class="text-4xl font-bold mt-2" x-text="(state?.week ?? 0)"></div>
+        <button class="mt-4 text-xs bg-white text-indigo-600 px-3 py-1.5 rounded hover:bg-indigo-50 font-medium" @click="status()">
+          🔄 Refresh
+        </button>
       </div>
-      <div class="bg-white rounded-lg shadow p-4">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-500">Store 1</div>
-          <div class="text-sm text-gray-400">Demand <span class="font-medium" x-text="state?.demand_s1 ?? 0"></span></div>
+      
+      <div class="bg-white rounded-lg shadow-lg p-5 border-2" :class="stockAlert('s1') ? 'border-red-400 bg-red-50' : 'border-blue-200'">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-semibold text-lg text-blue-700">🏬 Store 1</div>
+          <span x-show="stockAlert('s1')" class="text-xs bg-red-500 text-white px-2 py-1 rounded">⚠️ LOW</span>
         </div>
-        <div class="text-xl font-semibold mt-1"><span x-text="state?.store1_stock ?? 0"></span> units</div>
-        <div class="h-2 bg-gray-100 rounded mt-3 overflow-hidden">
-          <div class="h-full bg-blue-600" :style="{ width: bar(state?.store1_stock ?? 0) }"></div>
+        <div class="text-3xl font-bold text-gray-900">
+          <span x-text="state?.store1_stock ?? 0"></span>
+          <span class="text-lg text-gray-500">units</span>
+        </div>
+        <div class="mt-3 flex items-center justify-between text-sm">
+          <span class="text-gray-600">Weekly Demand</span>
+          <span class="font-semibold text-blue-600" x-text="state?.demand_s1 ?? 0"></span>
+        </div>
+        <div class="mt-3">
+          <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-500" :style="{ width: bar(state?.store1_stock ?? 0) }"></div>
+          </div>
+          <div class="text-xs text-gray-500 mt-1" x-text="'Capacity: ' + bar(state?.store1_stock ?? 0)"></div>
         </div>
       </div>
-      <div class="bg-white rounded-lg shadow p-4">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-500">Store 2</div>
-          <div class="text-sm text-gray-400">Demand <span class="font-medium" x-text="state?.demand_s2 ?? 0"></span></div>
+      
+      <div class="bg-white rounded-lg shadow-lg p-5 border-2" :class="stockAlert('s2') ? 'border-red-400 bg-red-50' : 'border-emerald-200'">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-semibold text-lg text-emerald-700">🏬 Store 2</div>
+          <span x-show="stockAlert('s2')" class="text-xs bg-red-500 text-white px-2 py-1 rounded">⚠️ LOW</span>
         </div>
-        <div class="text-xl font-semibold mt-1"><span x-text="state?.store2_stock ?? 0"></span> units</div>
-        <div class="h-2 bg-gray-100 rounded mt-3 overflow-hidden">
-          <div class="h-full bg-emerald-600" :style="{ width: bar(state?.store2_stock ?? 0) }"></div>
+        <div class="text-3xl font-bold text-gray-900">
+          <span x-text="state?.store2_stock ?? 0"></span>
+          <span class="text-lg text-gray-500">units</span>
+        </div>
+        <div class="mt-3 flex items-center justify-between text-sm">
+          <span class="text-gray-600">Weekly Demand</span>
+          <span class="font-semibold text-emerald-600" x-text="state?.demand_s2 ?? 0"></span>
+        </div>
+        <div class="mt-3">
+          <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-500" :style="{ width: bar(state?.store2_stock ?? 0) }"></div>
+          </div>
+          <div class="text-xs text-gray-500 mt-1" x-text="'Capacity: ' + bar(state?.store2_stock ?? 0)"></div>
         </div>
       </div>
-      <div class="bg-white rounded-lg shadow p-4">
-        <div class="text-sm text-gray-500">Quick</div>
-        <div class="mt-2 flex flex-wrap gap-2">
-          <button @click="reset()" :disabled="busy" class="px-3 py-2 text-sm rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50">Reset</button>
-          <button @click="status()" :disabled="busy" class="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">Status</button>
+      
+      <div class="bg-white rounded-lg shadow-lg p-5">
+        <div class="font-semibold text-gray-700 mb-3">Quick Actions</div>
+        <div class="space-y-2">
+          <button @click="reset()" :disabled="busy" class="w-full px-4 py-2.5 text-sm rounded-lg bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50 font-medium transition">
+            🔄 Reset to Default
+          </button>
+          <button @click="status()" :disabled="busy" class="w-full px-4 py-2.5 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 font-medium transition">
+            📊 Refresh Status
+          </button>
         </div>
       </div>
     </section>
 
-    <!-- Controls and Assistant -->
-    <section class="grid gap-6 grid-cols-1 lg:grid-cols-3">
-      <div class="space-y-6 lg:col-span-2">
-        <!-- Step-by-step Controls -->
-        <div class="bg-white rounded-lg shadow p-5 space-y-4">
-          <h2 class="text-lg font-semibold">Step 1 · Set weekly demand</h2>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="grid gap-6 grid-cols-1 lg:grid-cols-3">
+      <!-- Main Controls -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Demand Setup -->
+        <div class="bg-white rounded-lg shadow-lg p-6 border-t-4 border-indigo-500">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-2xl">📦</span>
+            <h2 class="text-xl font-bold text-gray-800">Set Weekly Demand</h2>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label class="block text-sm text-gray-600 mb-1">Demand S1</label>
-              <input type="number" min="0" x-model.number="demandS1" class="w-full p-2 rounded border" placeholder="e.g., 30">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Store 1 Demand</label>
+              <input type="number" min="0" x-model.number="demandS1" 
+                class="w-full p-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200" 
+                placeholder="e.g., 30">
             </div>
             <div>
-              <label class="block text-sm text-gray-600 mb-1">Demand S2</label>
-              <input type="number" min="0" x-model.number="demandS2" class="w-full p-2 rounded border" placeholder="e.g., 20">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Store 2 Demand</label>
+              <input type="number" min="0" x-model.number="demandS2" 
+                class="w-full p-3 rounded-lg border-2 border-gray-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200" 
+                placeholder="e.g., 20">
             </div>
             <div class="flex items-end">
-              <button @click="setDemand()" :disabled="busy" class="w-full px-3 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50">Set Demand</button>
+              <button @click="setDemand()" :disabled="busy" 
+                class="w-full px-4 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold disabled:opacity-50 transition shadow-md">
+                ✓ Set Demand
+              </button>
             </div>
           </div>
-          <div class="flex flex-wrap gap-2 text-xs">
-            <span class="text-gray-500">Presets:</span>
-            <button @click="applyPreset(30,20)" class="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">S1=30 · S2=20</button>
-            <button @click="applyPreset(80,10)" class="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">S1=80 · S2=10</button>
-            <button @click="applyPreset(10,50)" class="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">S1=10 · S2=50</button>
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <span class="text-sm text-gray-600 font-medium">Quick Presets:</span>
+            <button @click="applyPreset(30,20)" class="px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium transition">S1=30, S2=20</button>
+            <button @click="applyPreset(80,10)" class="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-sm font-medium transition">S1=80, S2=10</button>
+            <button @click="applyPreset(10,50)" class="px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-sm font-medium transition">S1=10, S2=50</button>
           </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-5 space-y-4">
-          <h2 class="text-lg font-semibold">Step 2 · Run simulation</h2>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        <!-- LLM Advisor (Primary) -->
+        <div class="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg shadow-lg p-6 border-2 border-purple-300">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-2xl">🤖</span>
+            <h2 class="text-xl font-bold text-purple-800">AI Advisor - Ask Anything!</h2>
+          </div>
+          <div class="space-y-4">
             <div>
-              <label class="block text-sm text-gray-600 mb-1">Weeks</label>
-              <input type="number" min="1" x-model.number="weeks" class="w-full p-2 rounded border" placeholder="e.g., 2">
+              <textarea x-model="llmQuestion" rows="3" placeholder="e.g., 'run 2 weeks' or 'plan transfers and simulate 3 weeks'"
+                class="w-full p-4 rounded-lg border-2 border-purple-300 focus:border-purple-500 focus:ring focus:ring-purple-200 text-sm"></textarea>
             </div>
-            <div class="md:col-span-2 flex gap-2">
-              <button @click="runWeeks()" :disabled="busy" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50">Run</button>
-              <button @click="runOnce()" :disabled="busy" class="px-3 py-2 rounded bg-indigo-100 hover:bg-indigo-200">Advance 1 week</button>
+            <div class="flex flex-wrap gap-2">
+              <span class="text-xs text-gray-600 font-medium self-center">Try these:</span>
+              <button @click="llmQuestion='run 2 weeks'" class="px-3 py-1.5 rounded-lg bg-white border border-purple-300 hover:bg-purple-50 text-xs font-medium">▶️ Run 2 weeks</button>
+              <button @click="llmQuestion='run 5 weeks'" class="px-3 py-1.5 rounded-lg bg-white border border-purple-300 hover:bg-purple-50 text-xs font-medium">▶️ Run 5 weeks</button>
+              <button @click="llmQuestion='explain current inventory status'" class="px-3 py-1.5 rounded-lg bg-white border border-purple-300 hover:bg-purple-50 text-xs font-medium">💭 Explain status</button>
+            </div>
+            <div class="flex gap-3">
+              <button @click="askLLM()" :disabled="busy || !llmQuestion.trim()" 
+                class="flex-1 px-5 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold disabled:opacity-50 transition shadow-md">
+                🚀 Ask AI
+              </button>
+              <button @click="applyLLMPlan()" :disabled="busy || llmSteps.length===0" 
+                class="flex-1 px-5 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold disabled:opacity-50 transition shadow-md">
+                ✅ Apply Plan
+              </button>
+              <button @click="llmQuestion=''; llmResponse=''; llmPlan=null; llmSteps=[]" 
+                class="px-4 py-3 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium">
+                🗑️
+              </button>
             </div>
           </div>
-        </div>
-
-        <!-- Result + Timeline -->
-        <div class="bg-white rounded-lg shadow p-5 space-y-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold">Last action</h2>
-            <div class="text-xs" x-show="busy">Running…</div>
+          
+          <!-- AI Response -->
+          <div x-show="llmResponse" class="mt-4 p-4 bg-white rounded-lg border-2 border-purple-200 shadow-sm">
+            <div class="font-semibold text-purple-700 mb-2 flex items-center gap-2">
+              <span>🤖</span>
+              <span>AI Analysis</span>
+            </div>
+            <div class="text-sm whitespace-pre-wrap text-gray-700 max-h-48 overflow-y-auto" x-text="llmResponse || 'Waiting for AI response...'"></div>
           </div>
-          <div x-show="lastAction" class="border rounded p-3 bg-gray-50">
-            <template x-if="(lastAction?.plan?.action || lastAction?.result?.message)">
-              <div class="space-y-1">
-                <div class="text-sm">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" x-text="(lastAction.plan?.action || 'action')"></span>
-                </div>
-                <div class="text-sm text-gray-700">
-                  <template x-if="(lastAction.plan?.action||'').toLowerCase()==='set_demand'">
-                    <div>Set demand → S1: <span class="font-medium" x-text="lastAction.plan?.params?.s1 ?? lastAction.plan?.params?.store1 ?? lastAction.plan?.params?.demand_s1 ?? 0"></span>, S2: <span class="font-medium" x-text="lastAction.plan?.params?.s2 ?? lastAction.plan?.params?.store2 ?? lastAction.plan?.params?.demand_s2 ?? 0"></span></div>
-                  </template>
-                  <template x-if="(lastAction.plan?.action||'').toLowerCase()==='transfer'">
-                    <div>Transfer → <span class="font-medium" x-text="lastAction.plan?.params?.amount ?? lastAction.plan?.params?.qty ?? 0"></span> from <span class="font-medium" x-text="lastAction.plan?.params?.from ?? lastAction.plan?.params?.src"></span> to <span class="font-medium" x-text="lastAction.plan?.params?.to ?? lastAction.plan?.params?.dst"></span></div>
-                  </template>
-                  <template x-if="(lastAction.plan?.action||'').toLowerCase()==='run_weeks'">
-                    <div>Run weeks → <span class="font-medium" x-text="lastAction.plan?.params?.weeks ?? lastAction.plan?.params?.w ?? 1"></span></div>
-                  </template>
-                </div>
-                <div class="text-xs text-gray-500" x-text="lastAction.result?.message || ''"></div>
-              </div>
-            </template>
-          </div>
-          <details class="mt-2">
-            <summary class="text-sm cursor-pointer text-gray-600">Raw summary</summary>
-            <pre class="text-sm whitespace-pre-wrap mt-2" x-text="text || 'No actions yet.'"></pre>
-          </details>
-
-          <div class="border-t pt-4">
-            <div class="flex items-center justify-between">
-              <h3 class="font-medium">Timeline (<span x-text="showAllWeeks ? 'all runs' : 'latest run'"></span>)</h3>
-              <div class="flex items-center gap-3">
-                <div class="text-xs text-gray-600" x-show="timelineRows().length">
-                  <span class="mr-2">Weeks: <span class="font-medium" x-text="timelineTotals().count"></span></span>
-                  <span class="mr-2">Unmet S1: <span class="font-medium" x-text="timelineTotals().unmetS1"></span></span>
-                  <span>Unmet S2: <span class="font-medium" x-text="timelineTotals().unmetS2"></span></span>
-                </div>
-                <label class="text-xs flex items-center gap-1 cursor-pointer">
-                  <input type="checkbox" x-model="showAllWeeks" class="rounded">
-                  <span>Show all weeks</span>
-                </label>
-                <button class="text-xs text-blue-600 hover:underline" @click="showRaw = !showRaw">Toggle raw JSON</button>
-              </div>
+          
+          <!-- Stock Sufficiency Analysis -->
+          <div x-show="llmPlan !== null && llmSteps.length > 0" class="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-indigo-200 shadow-sm">
+            <div class="font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+              <span>📊</span>
+              <span>Stock Sufficiency Analysis</span>
             </div>
-            <div x-show="timelineRows().length" class="mt-2 overflow-x-auto">
-              <table class="min-w-full text-sm">
-                <thead>
-                  <tr class="text-left text-gray-500">
-                    <th class="py-2 pr-4">Week</th>
-                    <th class="py-2 pr-4">S1 end</th>
-                    <th class="py-2 pr-4">S2 end</th>
-                    <th class="py-2 pr-4">Unmet S1</th>
-                    <th class="py-2 pr-4">Unmet S2</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <template x-for="(row, i) in timelineRows()" :key="'t'+row.week+'-'+i">
-                    <tr class="border-t">
-                      <td class="py-2 pr-4" x-text="row.week"></td>
-                      <td class="py-2 pr-4" x-text="row.stocks_end_of_week.store1"></td>
-                      <td class="py-2 pr-4" x-text="row.stocks_end_of_week.store2"></td>
-                      <td class="py-2 pr-4" :class="row.unmet_demand.s1>0 ? 'text-red-600 font-medium' : ''" x-text="row.unmet_demand.s1"></td>
-                      <td class="py-2 pr-4" :class="row.unmet_demand.s2>0 ? 'text-red-600 font-medium' : ''" x-text="row.unmet_demand.s2"></td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-            </div>
-            <div x-show="timelineRows().length" class="mt-6 overflow-x-auto">
-              <div class="font-medium mb-1">Consumption detail (<span x-text="showAllWeeks ? 'all runs' : 'latest run'"></span>)</div>
-              <table class="min-w-full text-sm">
-                <thead>
-                  <tr class="text-left text-gray-500">
-                    <th class="py-2 pr-4">Week</th>
-                    <th class="py-2 pr-4">S1 start</th>
-                    <th class="py-2 pr-4">S1 consumed</th>
-                    <th class="py-2 pr-4">S1 unmet</th>
-                    <th class="py-2 pr-4">S1 end</th>
-                    <th class="py-2 pr-4">S2 start</th>
-                    <th class="py-2 pr-4">S2 consumed</th>
-                    <th class="py-2 pr-4">S2 unmet</th>
-                    <th class="py-2 pr-4">S2 end</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <template x-for="(row, i) in timelineRows()" :key="'c'+row.week+'-'+i">
-                    <tr class="border-t">
-                      <td class="py-2 pr-4" x-text="row.week"></td>
-                      <td class="py-2 pr-4" x-text="row.stocks_start_of_week.store1"></td>
-                      <td class="py-2 pr-4" x-text="row.consumed.s1"></td>
-                      <td class="py-2 pr-4" :class="row.unmet_demand.s1>0 ? 'text-red-600 font-medium' : ''" x-text="row.unmet_demand.s1"></td>
-                      <td class="py-2 pr-4" x-text="row.stocks_end_of_week.store1"></td>
-                      <td class="py-2 pr-4" x-text="row.stocks_start_of_week.store2"></td>
-                      <td class="py-2 pr-4" x-text="row.consumed.s2"></td>
-                      <td class="py-2 pr-4" :class="row.unmet_demand.s2>0 ? 'text-red-600 font-medium' : ''" x-text="row.unmet_demand.s2"></td>
-                      <td class="py-2 pr-4" x-text="row.stocks_end_of_week.store2"></td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-            </div>
-            <div x-show="transfers?.length" class="mt-6 overflow-x-auto">
-              <div class="font-medium mb-1">Transfers (latest plan)</div>
-              <!-- Transfers summary chips -->
-              <div class="flex flex-wrap items-center gap-2 mb-2 text-xs">
-                <div class="px-2 py-1 rounded bg-gray-100">
-                  S2 → S1 total: <span class="font-medium" x-text="transferTotals().s2_to_s1"></span>
-                </div>
-                <div class="px-2 py-1 rounded bg-gray-100">
-                  S1 → S2 total: <span class="font-medium" x-text="transferTotals().s1_to_s2"></span>
-                </div>
-                <div class="px-2 py-1 rounded" :class="transferTotals().net_to_s1>0 ? 'bg-emerald-100 text-emerald-700' : (transferTotals().net_to_s1<0 ? 'bg-red-100 text-red-700' : 'bg-gray-100')">
-                  Net to S1: <span class="font-medium" x-text="transferTotals().net_to_s1"></span>
+            <div class="space-y-3 text-sm">
+              <!-- Current Inventory -->
+              <div class="bg-white rounded-lg p-3">
+                <div class="font-medium text-gray-700 mb-2">📦 Current Inventory</div>
+                <div class="grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span class="text-gray-600">S1 Stock:</span>
+                    <span class="font-bold text-blue-600 ml-1" x-text="state?.store1_stock ?? 0"></span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">S2 Stock:</span>
+                    <span class="font-bold text-emerald-600 ml-1" x-text="state?.store2_stock ?? 0"></span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Total:</span>
+                    <span class="font-bold text-indigo-600 ml-1" x-text="(state?.store1_stock ?? 0) + (state?.store2_stock ?? 0)"></span>
+                  </div>
                 </div>
               </div>
-              <table class="min-w-full text-sm">
-                <thead>
-                  <tr class="text-left text-gray-500">
-                    <th class="py-2 pr-4">From</th>
-                    <th class="py-2 pr-4">To</th>
-                    <th class="py-2 pr-4">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <template x-for="(t, i) in transfers" :key="i">
-                    <tr class="border-t">
-                      <td class="py-2 pr-4" x-text="t.from"></td>
-                      <td class="py-2 pr-4" x-text="t.to"></td>
-                      <td class="py-2 pr-4" x-text="t.amount"></td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-            </div>
-            <pre x-show="showRaw" class="mt-2 text-xs bg-gray-50 p-3 rounded overflow-auto" x-text="JSON.stringify(state || {}, null, 2)"></pre>
-          </div>
-        </div>
-      </div>
-
-      <!-- LLM Advisor -->
-      <div class="space-y-6">
-        <div class="bg-white rounded-lg shadow p-5 space-y-4">
-          <h2 class="text-lg font-semibold">LLM Advisor</h2>
-          <div class="space-y-2">
-            <input x-model="llmQuestion" type="text" placeholder="e.g., Plan next 2 weeks based on current stocks" class="w-full border rounded px-3 py-2">
-            <div class="flex flex-wrap gap-2 text-xs">
-              <span class="text-gray-500">Presets:</span>
-              <button @click="llmQuestion='Set demand S1=30 S2=20 and run 2 weeks'" class="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">Set 30/20 + Run 2</button>
-              <button @click="llmQuestion='If S1 faces shortage, plan transfer and run 1 week'" class="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">Plan transfer + Run 1</button>
-              <button @click="llmQuestion='Explain current state and next steps'" class="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">Explain</button>
-            </div>
-            <div class="flex gap-2">
-              <button @click="askLLM()" :disabled="busy" class="px-3 py-2 rounded bg-purple-600 text-white disabled:opacity-50">Ask</button>
-              <button @click="llmQuestion=''; llmResponse=''; llmPlan=null; llmSteps=[]" class="px-3 py-2 rounded bg-gray-200">Clear</button>
-              <button @click="applyLLMPlan()" :disabled="busy || llmSteps.length===0" class="px-3 py-2 rounded bg-emerald-600 text-white disabled:opacity-50">Apply plan</button>
-            </div>
-          </div>
-          <div class="text-sm whitespace-pre-wrap bg-gray-50 rounded p-3 min-h-[100px]" x-text="llmResponse || 'No advice yet.'"></div>
-          <div x-show="llmSteps.length" class="text-sm">
-            <div class="font-medium mb-1">Parsed actions:</div>
-            <ol class="list-decimal ml-5 space-y-1">
-              <template x-for="(st, i) in llmSteps" :key="i">
-                <li>
-                  <template x-if="(st.action||'').toLowerCase()==='set_demand'">
-                    <span>set demand S1=<span x-text="st.params?.s1 ?? st.params?.store1 ?? st.params?.demand_s1 ?? 0"></span>, S2=<span x-text="st.params?.s2 ?? st.params?.store2 ?? st.params?.demand_s2 ?? 0"></span></span>
-                  </template>
-                  <template x-if="(st.action||'').toLowerCase()==='transfer'">
-                    <span>transfer <span x-text="st.params?.amount ?? st.params?.qty ?? 0"></span> from <span x-text="st.params?.from ?? st.params?.src"></span> to <span x-text="st.params?.to ?? st.params?.dst"></span></span>
-                  </template>
-                  <template x-if="(st.action||'').toLowerCase()==='run_weeks'">
-                    <span>run <span x-text="st.params?.weeks ?? st.params?.w ?? 1"></span> week(s)</span>
-                  </template>
-                  <template x-if="['run_weeks','set_demand','transfer'].indexOf((st.action||'').toLowerCase())===-1">
-                    <span x-text="(st.action || 'explain') + (st.rationale ? ' — ' + st.rationale : '')"></span>
-                  </template>
-                </li>
+              
+              <!-- Demand Analysis -->
+              <div class="bg-white rounded-lg p-3">
+                <div class="font-medium text-gray-700 mb-2">📈 Weekly Demand</div>
+                <div class="grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span class="text-gray-600">S1 Demand:</span>
+                    <span class="font-bold text-blue-600 ml-1" x-text="state?.demand_s1 ?? 0"></span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">S2 Demand:</span>
+                    <span class="font-bold text-emerald-600 ml-1" x-text="state?.demand_s2 ?? 0"></span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600">Total/Week:</span>
+                    <span class="font-bold text-indigo-600 ml-1" x-text="(state?.demand_s1 ?? 0) + (state?.demand_s2 ?? 0)"></span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Simulation Analysis -->
+              <template x-if="getRequestedWeeks() > 0">
+                <div class="bg-white rounded-lg p-3">
+                  <div class="font-medium text-gray-700 mb-2">🔮 Simulation Forecast</div>
+                  <div class="space-y-2 text-xs">
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Requested Duration:</span>
+                      <span class="font-bold" x-text="getRequestedWeeks() + ' weeks'"></span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Total Demand Required:</span>
+                      <span class="font-bold" x-text="getTotalDemand() + ' units'"></span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Total Stock Available:</span>
+                      <span class="font-bold" x-text="getTotalStock() + ' units'"></span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t">
+                      <span class="text-gray-700 font-medium">Stock Sufficiency:</span>
+                      <span class="font-bold px-2 py-1 rounded" :class="isStockSufficient() ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" x-text="isStockSufficient() ? '✅ Sufficient' : '❌ Insufficient'"></span>
+                    </div>
+                    <template x-if="!isStockSufficient()">
+                      <div class="bg-red-50 border border-red-200 rounded p-2">
+                        <div class="font-medium text-red-700">⚠️ Warning: Stockout Expected!</div>
+                        <div class="text-red-600 mt-1">
+                          <span>Shortage: </span><span class="font-bold" x-text="getTotalDemand() - getTotalStock()"></span><span> units</span>
+                        </div>
+                        <div class="text-red-600">
+                          <span>Max Sustainable: </span><span class="font-bold" x-text="getMaxSustainableWeeks()"></span><span> weeks</span>
+                        </div>
+                      </div>
+                    </template>
+                    <template x-if="isStockSufficient()">
+                      <div class="bg-green-50 border border-green-200 rounded p-2">
+                        <div class="font-medium text-green-700">✅ Sufficient stock for requested duration</div>
+                        <div class="text-green-600 mt-1" x-text="'Surplus after simulation: ' + (getTotalStock() - getTotalDemand()) + ' units'"></div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
               </template>
-            </ol>
-            <div class="mt-2 text-xs text-gray-500">Apply plan runs these actions in order and updates the state.</div>
+              
+              <!-- Per-Store Analysis -->
+              <div class="bg-white rounded-lg p-3">
+                <div class="font-medium text-gray-700 mb-2">🏪 Per-Store Analysis</div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div class="border-r pr-2">
+                    <div class="font-medium text-blue-600 mb-1">Store 1</div>
+                    <div class="space-y-1">
+                      <div>Stock: <span class="font-bold" x-text="state?.store1_stock ?? 0"></span></div>
+                      <div>Demand: <span class="font-bold" x-text="state?.demand_s1 ?? 0"></span>/week</div>
+                      <div>Runs for: <span class="font-bold" :class="getStoreWeeks('s1') < getRequestedWeeks() ? 'text-red-600' : 'text-green-600'" x-text="getStoreWeeks('s1') + ' weeks'"></span></div>
+                    </div>
+                  </div>
+                  <div class="pl-2">
+                    <div class="font-medium text-emerald-600 mb-1">Store 2</div>
+                    <div class="space-y-1">
+                      <div>Stock: <span class="font-bold" x-text="state?.store2_stock ?? 0"></span></div>
+                      <div>Demand: <span class="font-bold" x-text="state?.demand_s2 ?? 0"></span>/week</div>
+                      <div>Runs for: <span class="font-bold" :class="getStoreWeeks('s2') < getRequestedWeeks() ? 'text-red-600' : 'text-green-600'" x-text="getStoreWeeks('s2') + ' weeks'"></span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Parsed Actions (Always visible when AI has responded) -->
+          <div x-show="llmPlan !== null" class="mt-4 p-4 bg-white rounded-lg border-2 border-emerald-200 shadow-sm">
+            <div class="font-semibold text-emerald-700 mb-3 flex items-center gap-2">
+              <span>📋</span>
+              <span>Execution Plan</span>
+            </div>
+            
+            <!-- Show action list if steps exist -->
+            <div x-show="llmSteps.length > 0">
+              <div class="text-xs text-gray-600 mb-2 font-medium">ACTIONS TO EXECUTE:</div>
+              <ol class="list-decimal ml-5 space-y-3 text-sm">
+                <template x-for="(st, i) in llmSteps" :key="i">
+                  <li class="text-gray-700">
+                    <div class="font-medium">
+                      <template x-if="(st.action||'').toLowerCase()==='set_demand'">
+                        <span>Set demand → <span class="font-semibold text-blue-600">S1=<span x-text="st.params?.s1 ?? 0"></span></span>, <span class="font-semibold text-emerald-600">S2=<span x-text="st.params?.s2 ?? 0"></span></span></span>
+                      </template>
+                      <template x-if="(st.action||'').toLowerCase()==='transfer'">
+                        <span>Transfer → <span class="font-semibold text-purple-600"><span x-text="st.params?.amount ?? 0"></span> units</span> from <span class="font-semibold" x-text="st.params?.from"></span> to <span class="font-semibold" x-text="st.params?.to"></span></span>
+                      </template>
+                      <template x-if="(st.action||'').toLowerCase()==='run_weeks'">
+                        <span>Run simulation → <span class="font-semibold text-indigo-600"><span x-text="st.params?.weeks ?? 1"></span> week(s)</span></span>
+                      </template>
+                      <template x-if="['run_weeks','set_demand','transfer'].indexOf((st.action||'').toLowerCase())===-1">
+                        <span x-text="(st.action || 'explain')"></span>
+                      </template>
+                    </div>
+                    <!-- Show rationale if present -->
+                    <template x-if="st.rationale">
+                      <div class="mt-1 pl-4 border-l-2 border-indigo-200 text-xs text-gray-600 italic bg-indigo-50 p-2 rounded-r" x-text="st.rationale"></div>
+                    </template>
+                  </li>
+                </template>
+              </ol>
+            </div>
+                      <template x-if="(st.action||'').toLowerCase()==='run_weeks'">
+                        <span>Run simulation → <span class="font-semibold text-indigo-600"><span x-text="st.params?.weeks ?? 1"></span> week(s)</span></span>
+                      </template>
+                    <template x-if="['run_weeks','set_demand','transfer'].indexOf((st.action||'').toLowerCase())===-1">
+                      <span x-text="(st.action || 'explain') + (st.rationale ? ' — ' + st.rationale : '')"></span>
+                    </template>
+                  </li>
+                </template>
+              </ol>
+            </div>
+            
+            <!-- Show message if no executable actions (explain only) -->
+            <div x-show="llmSteps.length === 0" class="text-sm text-gray-600 italic">
+              ℹ️ This is an informational response with no executable actions.
+            </div>
+            
+            <!-- Debug info -->
+            <div class="mt-3 pt-3 border-t border-emerald-100">
+              <details class="text-xs text-gray-500">
+                <summary class="cursor-pointer hover:text-emerald-600 font-medium">🔍 Raw Plan Data</summary>
+                <pre class="mt-2 p-2 bg-gray-50 rounded overflow-x-auto" x-text="JSON.stringify(llmPlan, null, 2)"></pre>
+              </details>
+            </div>
           </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-5 space-y-3">
-          <h2 class="text-lg font-semibold">Manual prompt (LLM parsed)</h2>
-          <div class="flex gap-2">
-            <input x-model="prompt" @keyup.enter="send()" placeholder="e.g., set demand s1=30 s2=20; transfer from s2 to s1 amount=40; run 2 weeks" class="flex-1 p-3 rounded border">
-            <button @click="send()" :disabled="busy" class="px-4 py-3 rounded bg-blue-600 text-white disabled:opacity-50">Send</button>
+        <!-- Results & Timeline -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">📈</span>
+              <h2 class="text-xl font-bold text-gray-800">Simulation Results</h2>
+            </div>
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="checkbox" x-model="showAllWeeks" class="rounded">
+              <span class="font-medium">Show all weeks</span>
+            </label>
           </div>
-          <p class="text-xs text-gray-500">LLM will parse commands like: set demand s1=30 s2=20; transfer from s2 to s1 amount=40; run 2 weeks</p>
+          
+          <!-- Summary Stats -->
+          <div x-show="timelineRows().length" class="grid grid-cols-3 gap-4 mb-4">
+            <div class="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
+              <div class="text-xs text-gray-600">Total Weeks</div>
+              <div class="text-2xl font-bold text-indigo-600" x-text="timelineTotals().count"></div>
+            </div>
+            <div class="bg-red-50 rounded-lg p-3 border border-red-200">
+              <div class="text-xs text-gray-600">Unmet S1</div>
+              <div class="text-2xl font-bold text-red-600" x-text="timelineTotals().unmetS1"></div>
+            </div>
+            <div class="bg-red-50 rounded-lg p-3 border border-red-200">
+              <div class="text-xs text-gray-600">Unmet S2</div>
+              <div class="text-2xl font-bold text-red-600" x-text="timelineTotals().unmetS2"></div>
+            </div>
+          </div>
+          
+          <!-- Timeline Table -->
+          <div x-show="timelineRows().length" class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-100">
+                <tr class="text-left text-gray-600">
+                  <th class="py-3 px-4 font-semibold">Week</th>
+                  <th class="py-3 px-4 font-semibold">S1 Stock</th>
+                  <th class="py-3 px-4 font-semibold">S2 Stock</th>
+                  <th class="py-3 px-4 font-semibold">Unmet S1</th>
+                  <th class="py-3 px-4 font-semibold">Unmet S2</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(row, i) in timelineRows()" :key="'t'+row.week+'-'+i">
+                  <tr class="border-t hover:bg-gray-50">
+                    <td class="py-3 px-4 font-medium" x-text="row.week"></td>
+                    <td class="py-3 px-4" x-text="row.stocks_end_of_week.store1"></td>
+                    <td class="py-3 px-4" x-text="row.stocks_end_of_week.store2"></td>
+                    <td class="py-3 px-4" :class="row.unmet_demand.s1>0 ? 'text-red-600 font-bold' : 'text-green-600'" x-text="row.unmet_demand.s1 || '✓'"></td>
+                    <td class="py-3 px-4" :class="row.unmet_demand.s2>0 ? 'text-red-600 font-bold' : 'text-green-600'" x-text="row.unmet_demand.s2 || '✓'"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Transfer Summary -->
+          <div x-show="transfers?.length" class="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <div class="font-semibold text-purple-800 mb-3 flex items-center gap-2">
+              <span>🔄</span>
+              <span>Transfers Executed</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3 mb-3">
+              <div class="bg-white rounded p-2 text-center">
+                <div class="text-xs text-gray-600">S2 → S1</div>
+                <div class="text-lg font-bold text-blue-600" x-text="transferTotals().s2_to_s1"></div>
+              </div>
+              <div class="bg-white rounded p-2 text-center">
+                <div class="text-xs text-gray-600">S1 → S2</div>
+                <div class="text-lg font-bold text-emerald-600" x-text="transferTotals().s1_to_s2"></div>
+              </div>
+              <div class="bg-white rounded p-2 text-center">
+                <div class="text-xs text-gray-600">Net to S1</div>
+                <div class="text-lg font-bold" :class="transferTotals().net_to_s1>0 ? 'text-blue-600' : (transferTotals().net_to_s1<0 ? 'text-emerald-600' : 'text-gray-600')" x-text="transferTotals().net_to_s1 > 0 ? '+' + transferTotals().net_to_s1 : transferTotals().net_to_s1"></div>
+              </div>
+            </div>
+            <table class="min-w-full text-sm">
+              <thead class="bg-white">
+                <tr class="text-left text-gray-600">
+                  <th class="py-2 px-3 font-semibold">From</th>
+                  <th class="py-2 px-3 font-semibold">To</th>
+                  <th class="py-2 px-3 font-semibold">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(t, i) in transfers" :key="i">
+                  <tr class="border-t border-purple-100">
+                    <td class="py-2 px-3 font-medium" x-text="t.from"></td>
+                    <td class="py-2 px-3 font-medium" x-text="t.to"></td>
+                    <td class="py-2 px-3 font-bold text-purple-600" x-text="t.amount + ' units'"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          
+          <div x-show="!timelineRows().length" class="text-center py-8 text-gray-500">
+            <div class="text-4xl mb-2">📊</div>
+            <div class="text-sm">No simulation results yet. Use AI Advisor to run simulation!</div>
+          </div>
         </div>
       </div>
-    </section>
+
+      <!-- Sidebar -->
+      <div class="space-y-6">
+        <!-- Current Status Card -->
+        <div class="bg-white rounded-lg shadow-lg p-5 border-t-4 border-indigo-500">
+          <div class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <span>📊</span>
+            <span>Current Status</span>
+          </div>
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between py-2 border-b">
+              <span class="text-gray-600">Week</span>
+              <span class="font-bold text-indigo-600" x-text="state?.week ?? 0"></span>
+            </div>
+            <div class="flex justify-between py-2 border-b">
+              <span class="text-gray-600">Store 1 Stock</span>
+              <span class="font-bold" x-text="(state?.store1_stock ?? 0) + ' units'"></span>
+            </div>
+            <div class="flex justify-between py-2 border-b">
+              <span class="text-gray-600">Store 2 Stock</span>
+              <span class="font-bold" x-text="(state?.store2_stock ?? 0) + ' units'"></span>
+            </div>
+            <div class="flex justify-between py-2 border-b">
+              <span class="text-gray-600">Demand S1</span>
+              <span class="font-bold text-blue-600" x-text="state?.demand_s1 ?? 0"></span>
+            </div>
+            <div class="flex justify-between py-2">
+              <span class="text-gray-600">Demand S2</span>
+              <span class="font-bold text-emerald-600" x-text="state?.demand_s2 ?? 0"></span>
+            </div>
+          </div>
+          <div x-show="busy" class="mt-4 text-center">
+            <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+            <div class="text-xs text-gray-500 mt-2">Processing...</div>
+          </div>
+        </div>
+
+        <!-- Help Card -->
+        <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg shadow-lg p-5 border-2 border-amber-200">
+          <div class="font-bold text-amber-800 mb-3 flex items-center gap-2">
+            <span>💡</span>
+            <span>Tips</span>
+          </div>
+          <ul class="space-y-2 text-xs text-gray-700">
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500">→</span>
+              <span>Set realistic demands to see automatic transfers in action</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500">→</span>
+              <span>Try "run 2 weeks" to see how AI prevents stockouts</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500">→</span>
+              <span>AI automatically detects which store needs stock</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500">→</span>
+              <span>Transfers are smart: never overdraw the donor store</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -322,11 +557,18 @@
       llmPlan: null,
       llmSteps: [],
       busy: false,
+      
       // helpers
       bar(v){
         const max = 200;
         const pct = Math.max(0, Math.min(100, Math.round(((Number(v)||0)/max)*100)));
         return pct + '%';
+      },
+      stockAlert(store){
+        if(!this.state) return false;
+        if(store === 's1') return (this.state.store1_stock < this.state.demand_s1) && this.state.demand_s1 > 0;
+        if(store === 's2') return (this.state.store2_stock < this.state.demand_s2) && this.state.demand_s2 > 0;
+        return false;
       },
       updateStateFrom(resp){
         const s = resp?.state?.state ?? resp?.state ?? resp?.data?.state ?? null;
@@ -350,21 +592,6 @@
         }
         if(resp?.transfer){ arr.push(resp.transfer); }
         return arr;
-      },
-      extractLastAction(resp){
-        try{
-          if(resp?.mode === 'groq'){
-            const plan = resp?.plan || {};
-            const planSteps = Array.isArray(plan.actions) ? plan.actions : [plan];
-            const resSteps = resp?.result?.steps || [];
-            if(resSteps.length){
-              const idx = resSteps.length - 1;
-              return { plan: planSteps[Math.min(idx, planSteps.length-1)] || planSteps[0], result: resSteps[idx] };
-            }
-            return { plan: planSteps[0] || null, result: resp?.result || null };
-          }
-          return { plan: null, result: resp };
-        }catch{ return null; }
       },
       timelineRows(){
         return this.showAllWeeks ? this.allTimeline : this.lastTimeline;
@@ -390,21 +617,56 @@
         return {
           ...tot,
           net_to_s1: tot.s2_to_s1 - tot.s1_to_s2,
-          net_to_s2: tot.s1_to_s2 - tot.s2_to_s1,
         };
       },
+      normalizeSteps(plan){
+        if(!plan) return [];
+        if(Array.isArray(plan.actions)) return plan.actions.filter(Boolean);
+        if(plan.action) return [plan];
+        return [];
+      },
+      
+      // Stock analysis helpers
+      getRequestedWeeks(){
+        const runStep = this.llmSteps.find(s => (s.action||'').toLowerCase() === 'run_weeks');
+        return runStep ? (runStep.params?.weeks || 0) : 0;
+      },
+      getTotalStock(){
+        return (this.state?.store1_stock || 0) + (this.state?.store2_stock || 0);
+      },
+      getTotalDemand(){
+        const weeks = this.getRequestedWeeks();
+        const weeklyDemand = (this.state?.demand_s1 || 0) + (this.state?.demand_s2 || 0);
+        return weeks * weeklyDemand;
+      },
+      isStockSufficient(){
+        return this.getTotalStock() >= this.getTotalDemand();
+      },
+      getMaxSustainableWeeks(){
+        const totalStock = this.getTotalStock();
+        const weeklyDemand = (this.state?.demand_s1 || 0) + (this.state?.demand_s2 || 0);
+        if(weeklyDemand === 0) return Infinity;
+        return Math.floor(totalStock / weeklyDemand);
+      },
+      getStoreWeeks(store){
+        if(!this.state) return 0;
+        const stock = store === 's1' ? (this.state.store1_stock || 0) : (this.state.store2_stock || 0);
+        const demand = store === 's1' ? (this.state.demand_s1 || 0) : (this.state.demand_s2 || 0);
+        if(demand === 0) return Infinity;
+        return Math.floor(stock / demand);
+      },
+      
       // actions
       async reset(){
         this.busy = true;
         try{
           const r = await fetch('/api/simple/reset', { method:'POST' });
           const j = await r.json();
-          this.text = 'State reset to S1=100, S2=200, week=0.';
           this.updateStateFrom(j);
           this.lastTimeline = [];
           this.allTimeline = [];
           this.transfers = [];
-          this.lastAction = { plan: { action: 'reset', params: {} }, result: j };
+          this.llmResponse = 'State reset to defaults: S1=100, S2=200, week=0';
         }catch(e){ console.error(e); }
         finally{ this.busy = false; }
       },
@@ -414,8 +676,6 @@
           const r = await fetch('/api/simple/status');
           const j = await r.json();
           this.updateStateFrom(j);
-          const s = this.state || {};
-          this.text = `Week ${s.week ?? 0}: S1=${s.store1_stock ?? 0}, S2=${s.store2_stock ?? 0}, demand S1=${s.demand_s1 ?? 0}, demand S2=${s.demand_s2 ?? 0}`;
         }catch(e){ console.error(e); }
         finally{ this.busy = false; }
       },
@@ -425,12 +685,6 @@
         const s2 = Number.isFinite(this.demandS2) ? this.demandS2 : 0;
         await this._sendPrompt(`set demand s1=${s1} s2=${s2}`);
       },
-      async runWeeks(){
-        const w = Math.max(1, Number(this.weeks||1));
-        await this._sendPrompt(`run ${w} weeks`);
-      },
-      async runOnce(){ await this._sendPrompt('run 1 week'); },
-      async send(){ if(!this.prompt.trim()) return; await this._sendPrompt(this.prompt); this.prompt=''; },
       async _sendPrompt(p){
         this.busy = true;
         try{
@@ -442,69 +696,61 @@
           this.lastTimeline = rows;
           if(rows?.length){ this.allTimeline = this.allTimeline.concat(rows); }
           this.transfers = this.extractTransfers(j);
-          this.lastAction = this.extractLastAction(j);
-          this.text = j?.mode === 'groq' ? this.summarizeGroq(j) : (j.text || JSON.stringify(j, null, 2));
         }catch(e){ console.error(e); }
         finally{ this.busy = false; }
       },
-      summarizeGroq(res){
-        const plan = res?.plan || {};
-        const actions = Array.isArray(plan.actions) ? plan.actions : [plan];
-        let lines = [];
-        lines.push('LLM plan applied:');
-        actions.filter(Boolean).forEach((step, idx)=>{
-          const a = (step.action||'').toLowerCase();
-          const p = step.params || {};
-          const why = step.rationale ? ` — reason: ${step.rationale}` : '';
-          if(a === 'set_demand'){
-            const s1 = p.s1 ?? p.store1 ?? p.store1_demand ?? p.demand_s1;
-            const s2 = p.s2 ?? p.store2 ?? p.store2_demand ?? p.demand_s2;
-            lines.push(`- Step ${idx+1}: set demand S1=${s1 ?? 0}, S2=${s2 ?? 0}${why}`);
-          } else if(a === 'transfer'){
-            const src = p.from ?? p.src; const dst = p.to ?? p.dst; const amt = p.amount ?? p.qty ?? 0;
-            lines.push(`- Step ${idx+1}: transfer ${amt} from ${src} to ${dst}${why}`);
-          } else if(a === 'run_weeks'){
-            const w = p.weeks ?? p.w ?? 1;
-            lines.push(`- Step ${idx+1}: run ${w} week(s)${why}`);
-          } else if(a === 'explain'){
-            lines.push(`- Step ${idx+1}: explain${why}`);
-          } else if(a){
-            lines.push(`- Step ${idx+1}: ${a} ${Object.keys(p).length?JSON.stringify(p):''}${why}`);
-          }
-        });
-        const s = this.state || {};
-        lines.push(`Final State → Week ${s.week ?? 0}: S1=${s.store1_stock ?? 0}, S2=${s.store2_stock ?? 0}, demands S1=${s.demand_s1 ?? 0}/S2=${s.demand_s2 ?? 0}`);
-        return lines.join('\n');
-      },
       async askLLM(){
-        this.llmResponse = 'Thinking...';
+        if(!this.llmQuestion.trim()) return;
+        
+        // CRITICAL FIX: ALWAYS sync demands before asking AI (handles initial state mismatch)
+        const uiDemandS1 = Number.isFinite(this.demandS1) ? this.demandS1 : 0;
+        const uiDemandS2 = Number.isFinite(this.demandS2) ? this.demandS2 : 0;
+        const stateDemandS1 = this.state?.demand_s1 || 0;
+        const stateDemandS2 = this.state?.demand_s2 || 0;
+        
+        // Always sync demands to ensure UI and backend are in sync
+        console.log(`🔧 Syncing demands: UI: S1=${uiDemandS1}, S2=${uiDemandS2} | Backend State: S1=${stateDemandS1}, S2=${stateDemandS2}`);
+        await this.setDemand();
+        // Wait for state to update
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        this.llmResponse = '🤔 AI is thinking...';
+        this.llmSteps = [];
+        this.busy = true;
         try{
           const r = await fetch('/api/simple/llm', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({question: this.llmQuestion}) });
           const j = await r.json();
+          console.log('🔍 LLM Response:', j);
           if(j.ok){
             this.llmPlan = j.plan;
+            console.log('📋 Plan object:', this.llmPlan);
             this.llmSteps = this.normalizeSteps(this.llmPlan);
-            let lines = ['LLM plan:'];
+            console.log('✅ Normalized steps:', this.llmSteps);
+            let lines = ['✅ AI Plan Ready:'];
             for(let i=0;i<this.llmSteps.length;i++){
-              const step = this.llmSteps[i] || {}; const a=(step.action||'').toLowerCase(); const p=step.params||{}; const why=step.rationale?` — ${step.rationale}`:'';
+              const step = this.llmSteps[i] || {}; 
+              const a=(step.action||'').toLowerCase(); 
+              const p=step.params||{};
               if(a==='set_demand'){
-                const s1=p.s1 ?? p.store1 ?? p.store1_demand ?? p.demand_s1; const s2=p.s2 ?? p.store2 ?? p.store2_demand ?? p.demand_s2;
-                lines.push(`- Step ${i+1}: set demand S1=${s1 ?? 0}, S2=${s2 ?? 0}${why}`);
+                const s1=p.s1 ?? 0; const s2=p.s2 ?? 0;
+                lines.push(`  ${i+1}. Set demand: S1=${s1}, S2=${s2}`);
               } else if(a==='transfer'){
-                const src=p.from ?? p.src; const dst=p.to ?? p.dst; const amt=p.amount ?? p.qty ?? 0;
-                lines.push(`- Step ${i+1}: transfer ${amt} from ${src} to ${dst}${why}`);
+                const src=p.from; const dst=p.to; const amt=p.amount ?? 0;
+                lines.push(`  ${i+1}. Transfer: ${amt} units from ${src} to ${dst}`);
               } else if(a==='run_weeks'){
-                const w=p.weeks ?? p.w ?? 1; lines.push(`- Step ${i+1}: run ${w} week(s)${why}`);
+                const w=p.weeks ?? 1;
+                lines.push(`  ${i+1}. Run simulation: ${w} week(s)`);
               } else {
-                lines.push(`- Step ${i+1}: ${a || 'explain'}${why}`);
+                lines.push(`  ${i+1}. ${a || 'explain'}`);
               }
             }
+            lines.push('\n💡 Click "Apply Plan" to execute these actions!');
             this.llmResponse = lines.join('\n');
           } else {
-            this.llmResponse = 'Error: ' + (j.error || 'Unknown');
-            this.llmPlan = null; this.llmSteps = [];
+            this.llmResponse = '❌ Error: ' + (j.error || 'Unknown error');
           }
-        }catch(e){ this.llmResponse = 'Error: ' + e.message; this.llmPlan = null; this.llmSteps = []; }
+        }catch(e){ this.llmResponse = '❌ Error: ' + e.message; }
+        finally{ this.busy = false; }
       },
       async applyLLMPlan(){
         if(!this.llmSteps.length) return;
@@ -512,17 +758,24 @@
         try{
           const r = await fetch('/api/simple/apply', { method:'POST', headers:{ 'Content-Type': 'application/json' }, body: JSON.stringify({ actions: this.llmSteps }) });
           const j = await r.json();
+          console.log('Apply result:', j);  // Debug log
           this.updateStateFrom(j);
           const rows = this.extractTimeline(j.result || j);
+          console.log('Extracted timeline rows:', rows);  // Debug log
           this.lastTimeline = rows;
           if(rows?.length){ this.allTimeline = this.allTimeline.concat(rows); }
           this.transfers = this.extractTransfers(j.result || j);
-          const resSteps = (j.result && j.result.steps) ? j.result.steps : [];
-          const idx = resSteps.length ? resSteps.length - 1 : 0;
-          this.lastAction = { plan: this.llmSteps[Math.min(idx, this.llmSteps.length-1)] || this.llmSteps[0], result: resSteps[idx] };
-          this.llmResponse += '\n\nPlan applied.';
-        }catch(e){ console.error(e); }
+          console.log('Extracted transfers:', this.transfers);  // Debug log
+          this.llmResponse += '\n\n✅ Plan executed successfully!';
+        }catch(e){ 
+          console.error('Apply error:', e);  // Debug log
+          this.llmResponse += '\n\n❌ Failed to execute plan.'; 
+        }
         finally{ this.busy = false; }
+      },
+      
+      init(){
+        this.status();
       }
     }
   }
