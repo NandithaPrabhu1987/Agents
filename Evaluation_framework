@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic Evaluation Framework</title>
+<style>
+  /* ── Reset & base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #f5f5f3;
+    color: #1a1a18;
+    padding: 2rem;
+    min-height: 100vh;
+  }
+
+  /* ── CSS variable shim (replaces Anthropic design tokens) ── */
+  :root {
+    --color-text-primary:      #1a1a18;
+    --color-text-secondary:    #5f5e5a;
+    --color-text-tertiary:     #888780;
+    --color-text-info:         #185fa5;
+    --color-text-warning:      #854f0b;
+    --color-text-danger:       #a32d2d;
+    --color-text-success:      #3b6d11;
+    --color-background-primary:   #ffffff;
+    --color-background-secondary: #f1efe8;
+    --color-background-info:      #e6f1fb;
+    --color-background-warning:   #faeeda;
+    --color-background-danger:    #fcebeb;
+    --color-background-success:   #eaf3de;
+    --color-border-tertiary:  rgba(0,0,0,0.12);
+    --color-border-secondary: rgba(0,0,0,0.22);
+    --color-border-primary:   rgba(0,0,0,0.32);
+    --color-border-info:      #378add;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+  }
+
+  /* ── Layout ── */
+  .fw { max-width: 860px; margin: 0 auto; }
+  .top-title { font-size: 22px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+  .top-sub   { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 1.5rem; }
+  .section-label {
+    font-size: 11px; font-weight: 500; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--color-text-tertiary);
+    margin-bottom: 8px; margin-top: 20px;
+  }
+
+  /* ── Agent tabs ── */
+  .agent-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+  .atab {
+    cursor: pointer; padding: 6px 14px; border-radius: 20px; font-size: 13px;
+    border: 0.5px solid var(--color-border-secondary);
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+    transition: all .15s; user-select: none;
+  }
+  .atab.active {
+    background: var(--color-background-info);
+    color: var(--color-text-info);
+    border-color: transparent; font-weight: 500;
+  }
+
+  /* ── Eval dimension grid ── */
+  .eval-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px; margin-bottom: 20px;
+  }
+  .eval-card {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 12px; cursor: pointer;
+    background: var(--color-background-primary);
+    transition: border-color .15s, background .15s;
+  }
+  .eval-card:hover  { border-color: var(--color-border-primary); background: var(--color-background-secondary); }
+  .eval-card.selected { border: 1.5px solid var(--color-border-info); background: var(--color-background-info); }
+  .eval-card.dimmed { opacity: 0.38; pointer-events: none; }
+  .eval-icon { font-size: 16px; margin-bottom: 6px; }
+  .eval-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+  .eval-tag  { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 10px; }
+  .tag-must { background: var(--color-background-danger);  color: var(--color-text-danger); }
+  .tag-rec  { background: var(--color-background-warning); color: var(--color-text-warning); }
+  .tag-opt  { background: var(--color-background-secondary); color: var(--color-text-tertiary); }
+
+  /* ── Detail panel ── */
+  .detail-panel {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 1.25rem;
+    background: var(--color-background-primary);
+    min-height: 220px;
+  }
+  .detail-panel.empty {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--color-text-tertiary); font-size: 14px;
+  }
+  .dp-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+  .dp-title  { font-size: 16px; font-weight: 500; color: var(--color-text-primary); }
+  .dp-badge  { font-size: 11px; padding: 3px 9px; border-radius: 10px; font-weight: 500; white-space: nowrap; }
+  .dp-desc   { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 14px; line-height: 1.6; }
+
+  /* ── Metrics ── */
+  .metrics-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-bottom: 14px; }
+  .metric-box   { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px; }
+  .metric-name  { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 3px; }
+  .metric-val   { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+
+  /* ── Impl steps ── */
+  .impl-row { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 6px; }
+  .impl-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-border-secondary); margin-top: 6px; flex-shrink: 0; }
+
+  /* ── Phase strip ── */
+  .phase-strip { display: flex; gap: 6px; margin-top: 16px; align-items: center; }
+  .phase-pill  { flex: 1; text-align: center; padding: 6px 4px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .ph1 { background: var(--color-background-info);    color: var(--color-text-info); }
+  .ph2 { background: var(--color-background-warning); color: var(--color-text-warning); }
+  .ph3 { background: var(--color-background-success); color: var(--color-text-success); }
+  .ph-arr { color: var(--color-text-tertiary); font-size: 14px; }
+
+  /* ── Roadmap ── */
+  .roadmap { display: flex; margin-top: 20px; }
+  .rphase {
+    flex: 1; padding: 12px;
+    border: 0.5px solid var(--color-border-tertiary);
+    background: var(--color-background-primary);
+  }
+  .rphase:first-child { border-radius: var(--border-radius-lg) 0 0 var(--border-radius-lg); }
+  .rphase:last-child  { border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0; }
+  .rphase + .rphase   { border-left: none; }
+  .rp-label { font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
+  .rp-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 6px; }
+  .rp-items { font-size: 12px; color: var(--color-text-secondary); line-height: 1.8; }
+  .col-1 .rp-label { color: var(--color-text-info); }
+  .col-2 .rp-label { color: var(--color-text-warning); }
+  .col-3 .rp-label { color: var(--color-text-success); }
+</style>
+</head>
+<body>
+<div class="fw">
+
+  <div class="top-title">Agentic evaluation framework</div>
+  <div class="top-sub">Select an agent type, then click any eval dimension to explore</div>
+
+  <div class="section-label">Your agent types</div>
+  <div class="agent-tabs" id="agentTabs">
+    <div class="atab active" data-agent="tool">Tool-calling / Automation</div>
+    <div class="atab" data-agent="rag">RAG / Knowledge</div>
+    <div class="atab" data-agent="chat">Conversational / Chat</div>
+    <div class="atab" data-agent="code">Code generation</div>
+  </div>
+
+  <div class="section-label">Evaluation dimensions — click one to explore</div>
+  <div class="eval-grid" id="evalGrid"></div>
+
+  <div class="section-label">Dimension detail</div>
+  <div class="detail-panel empty" id="detailPanel">← Select an eval dimension above</div>
+
+  <div class="section-label">Proposed rollout roadmap</div>
+  <div class="roadmap">
+    <div class="rphase col-1">
+      <div class="rp-label">Phase 1 — Month 1–2</div>
+      <div class="rp-title">Baseline</div>
+      <div class="rp-items">Prompt evals<br>Synthetic data gen<br>Error analysis (v1)</div>
+    </div>
+    <div class="rphase col-2">
+      <div class="rp-label">Phase 2 — Month 2–4</div>
+      <div class="rp-title">Core coverage</div>
+      <div class="rp-items">Tool calling evals<br>RAG evals<br>Planning / ReAct</div>
+    </div>
+    <div class="rphase col-3">
+      <div class="rp-label">Phase 3 — Month 4–6</div>
+      <div class="rp-title">Advanced</div>
+      <div class="rp-items">Memory evals<br>Regression CI/CD<br>Dashboard + review cadence</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ── Data model ── */
+const AGENTS = {
+  tool: "Tool-calling / Automation",
+  rag:  "RAG / Knowledge",
+  chat: "Conversational / Chat",
+  code: "Code generation"
+};
+
+const EVALS = [
+  {
+    id: "prompt", icon: "✦", name: "Prompt evals",
+    agents: { tool: "must", rag: "must", chat: "must", code: "must" },
+    desc: "Systematically compare prompt versions to measure how wording, structure, and instructions affect output quality. Establishes your quality baseline before any optimization.",
+    metrics: [
+      { name: "Accuracy",     val: "Binary 0/1" },
+      { name: "Clarity",      val: "Binary 0/1" },
+      { name: "Completeness", val: "Binary 0/1" }
+    ],
+    impl: [
+      "Curate 15–30 representative test cases per agent.",
+      "Define binary pass/fail criteria for each quality dimension.",
+      "Run v1 (minimal) vs v2 (structured) prompts and compare scores.",
+      "Use LLM-as-judge for scalable automated scoring."
+    ],
+    phases: ["Define criteria", "Baseline run", "Iterate & compare"]
+  },
+  {
+    id: "tool", icon: "⚙", name: "Tool calling",
+    agents: { tool: "must", rag: "opt", chat: "opt", code: "must" },
+    desc: "Evaluates whether your agent picks the right tools, avoids hallucinated calls, and chains multi-tool tasks efficiently. Critical for automation agents where wrong tool use causes real-world side effects.",
+    metrics: [
+      { name: "Precision",   val: "Correct calls / total" },
+      { name: "Recall",      val: "Required tools called" },
+      { name: "Efficiency",  val: "Calls per task" }
+    ],
+    impl: [
+      "Define test scenarios: single-tool, multi-tool, ambiguous, no-tool.",
+      "Log every tool invocation and compare against expected call sequences.",
+      "Track tool success rate — did execution complete without errors?",
+      "Measure cost per successful task for cost-efficiency benchmarking."
+    ],
+    phases: ["Scenario design", "Logging infra", "Precision/recall scoring"]
+  },
+  {
+    id: "rag", icon: "◈", name: "RAG evals",
+    agents: { tool: "opt", rag: "must", chat: "rec", code: "opt" },
+    desc: "Measures both retrieval quality and generation faithfulness. A system can retrieve well but hallucinate answers — or retrieve poorly but still respond confidently. Both failure modes need separate measurement.",
+    metrics: [
+      { name: "Context relevance", val: "Binary 0/1" },
+      { name: "Groundedness",      val: "Not hallucinated" },
+      { name: "Answer accuracy",   val: "Factually correct" }
+    ],
+    impl: [
+      "Test multiple retrieval configs (k=1, 2, 3 docs) with minimal vs detailed prompts.",
+      "Label whether retrieved context actually contains the answer.",
+      "Separately score: did the LLM use the retrieved context faithfully?",
+      "Identify gap: where does it fail — retrieval or generation?"
+    ],
+    phases: ["Corpus + questions", "Retrieval scoring", "Generation scoring"]
+  },
+  {
+    id: "planning", icon: "◎", name: "Planning & ReAct",
+    agents: { tool: "must", rag: "rec", chat: "rec", code: "must" },
+    desc: "Compares direct-answer agents vs ReAct (Thought → Action → Observation) agents on multi-step tasks. ReAct produces auditable traces and higher accuracy on complex reasoning chains.",
+    metrics: [
+      { name: "Answer correctness",    val: "Binary 0/1" },
+      { name: "Reasoning quality",     val: "Clear logical steps" },
+      { name: "Tool appropriateness",  val: "Used when needed" }
+    ],
+    impl: [
+      "Collect 8–15 tasks requiring multi-step reasoning and tool use.",
+      "Run same tasks through Direct and ReAct agent variants.",
+      "Use a stronger LLM (e.g. 70B) to evaluate reasoning traces.",
+      "Quantify how often ReAct outperforms Direct on complex tasks."
+    ],
+    phases: ["Task curation", "Dual-agent runs", "Trace evaluation"]
+  },
+  {
+    id: "memory", icon: "⊙", name: "Memory evals",
+    agents: { tool: "rec", rag: "opt", chat: "must", code: "opt" },
+    desc: "Tests whether conversational agents correctly store, recall, update, and forget user-provided facts across turns. Distinct from RAG — this is dynamic, user-provided information managed in real time.",
+    metrics: [
+      { name: "Recall accuracy",   val: "MRA" },
+      { name: "Update correctness", val: "MUC" },
+      { name: "Memory pollution",   val: "MPR (hallucinated facts)" }
+    ],
+    impl: [
+      "Build test conversations that store facts, then query them later.",
+      "Include update scenarios — user changes a fact mid-conversation.",
+      "Test forgetting — agent should clear info when asked.",
+      "Check Cross-Episode Transfer (CETS): do facts survive session resets?"
+    ],
+    phases: ["Scenario scripts", "Recall testing", "Update & forget testing"]
+  },
+  {
+    id: "synthetic", icon: "⊞", name: "Synthetic data gen",
+    agents: { tool: "must", rag: "must", chat: "must", code: "must" },
+    desc: "Generates diverse, structured evaluation datasets without manual labelling. Dimension-based generation avoids repetitive, generic LLM outputs and guarantees coverage across edge cases.",
+    metrics: [
+      { name: "Dimension coverage", val: "All combos tested" },
+      { name: "Diversity score",    val: "Low repetition rate" },
+      { name: "Edge case rate",     val: "% failure-mode inputs" }
+    ],
+    impl: [
+      "Define 4–6 dimensions per agent (category, intent, specificity, edge type).",
+      "Hand-craft ~20 seed tuples covering corner cases.",
+      "Separate tuple generation from natural-language phrasing — avoids repetition.",
+      "Scale to 200–500 examples per agent type using the LLM."
+    ],
+    phases: ["Dimension design", "Seed tuples", "LLM-scale generation"]
+  },
+  {
+    id: "error", icon: "◐", name: "Error analysis",
+    agents: { tool: "must", rag: "must", chat: "must", code: "must" },
+    desc: "Systematically identifies and categorizes failure modes, then uses evidence to target prompt improvements. Prevents intuition-driven prompt changes that fix one thing and break another.",
+    metrics: [
+      { name: "Failure frequency", val: "Per category %" },
+      { name: "V1 vs V2 delta",    val: "Improvement score" },
+      { name: "Regression rate",   val: "New failures introduced" }
+    ],
+    impl: [
+      "Run baseline agent on 10–20 examples, collect expert critiques.",
+      "Use LLM to extract recurring failure patterns and build a taxonomy (5–7 categories).",
+      "Measure failure frequency on a held-out validation set.",
+      "Re-run after prompt v2 and measure improvement per category."
+    ],
+    phases: ["Baseline + critiques", "Failure taxonomy", "Evidence-based v2"]
+  },
+  {
+    id: "ci", icon: "⬡", name: "Regression / CI",
+    agents: { tool: "must", rag: "rec", chat: "rec", code: "must" },
+    desc: "Embeds evals into your CI/CD pipeline so every prompt change, model update, or tool modification is automatically tested before deployment. Prevents silent regressions.",
+    metrics: [
+      { name: "Pass rate gate",   val: "Threshold to deploy" },
+      { name: "Regression delta", val: "Before vs after" },
+      { name: "Eval latency",     val: "Time to results" }
+    ],
+    impl: [
+      "Maintain a locked eval dataset per agent — add to it, never modify past entries.",
+      "Run evals on every PR that touches prompts, tools, or model config.",
+      "Set a minimum pass-rate threshold (e.g. 85%) as a merge gate.",
+      "Track eval score trends over time in a dashboard."
+    ],
+    phases: ["Locked dataset", "CI integration", "Threshold gates"]
+  }
+];
+
+const TAG_LABELS  = { must: "Required", rec: "Recommended", opt: "Optional" };
+const TAG_CLASSES = { must: "tag-must", rec: "tag-rec",     opt: "tag-opt" };
+
+/* ── State ── */
+let currentAgent = "tool";
+let selectedEval = null;
+
+/* ── Render functions ── */
+function render() {
+  renderGrid();
+  renderDetail();
+}
+
+function renderGrid() {
+  const grid = document.getElementById("evalGrid");
+  grid.innerHTML = "";
+  EVALS.forEach(ev => {
+    const priority = ev.agents[currentAgent];
+    const card = document.createElement("div");
+    card.className = [
+      "eval-card",
+      selectedEval === ev.id ? "selected" : "",
+      priority === "opt"     ? "dimmed"   : ""
+    ].filter(Boolean).join(" ");
+    card.innerHTML = `
+      <div class="eval-icon">${ev.icon}</div>
+      <div class="eval-name">${ev.name}</div>
+      <span class="eval-tag ${TAG_CLASSES[priority]}">${TAG_LABELS[priority]}</span>
+    `;
+    card.onclick = () => { selectedEval = ev.id; render(); };
+    grid.appendChild(card);
+  });
+}
+
+function renderDetail() {
+  const panel = document.getElementById("detailPanel");
+  if (!selectedEval) {
+    panel.className = "detail-panel empty";
+    panel.innerHTML = "← Select an eval dimension above";
+    return;
+  }
+  const ev = EVALS.find(e => e.id === selectedEval);
+  const priority  = ev.agents[currentAgent];
+  const agentName = AGENTS[currentAgent];
+  panel.className = "detail-panel";
+  panel.innerHTML = `
+    <div class="dp-header">
+      <div class="dp-title">${ev.icon} ${ev.name}</div>
+      <span class="dp-badge ${TAG_CLASSES[priority]}">${TAG_LABELS[priority]} for ${agentName}</span>
+    </div>
+    <div class="dp-desc">${ev.desc}</div>
+    <div class="section-label" style="margin-top:0">Key metrics</div>
+    <div class="metrics-grid">
+      ${ev.metrics.map(m => `
+        <div class="metric-box">
+          <div class="metric-name">${m.name}</div>
+          <div class="metric-val">${m.val}</div>
+        </div>`).join("")}
+    </div>
+    <div class="section-label">How to implement</div>
+    ${ev.impl.map(i => `
+      <div class="impl-row">
+        <div class="impl-dot"></div>
+        <div>${i}</div>
+      </div>`).join("")}
+    <div class="phase-strip">
+      ${ev.phases.map((p, i) => `
+        ${i > 0 ? '<div class="ph-arr">›</div>' : ""}
+        <div class="phase-pill ${["ph1","ph2","ph3"][i]}">${p}</div>
+      `).join("")}
+    </div>
+  `;
+}
+
+/* ── Event listeners ── */
+document.getElementById("agentTabs").addEventListener("click", e => {
+  const tab = e.target.closest(".atab");
+  if (!tab) return;
+  document.querySelectorAll(".atab").forEach(t => t.classList.remove("active"));
+  tab.classList.add("active");
+  currentAgent = tab.dataset.agent;
+  selectedEval = null;
+  render();
+});
+
+/* ── Init ── */
+render();
+</script>
+</body>
+</html>
